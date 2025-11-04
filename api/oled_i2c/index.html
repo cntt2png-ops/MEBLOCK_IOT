@@ -429,6 +429,48 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Sample Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-hien-thi-chuoi-co-ban-ssd1306" class="md-nav__link">
+    <span class="md-ellipsis">
+      1) Hiển thị chuỗi cơ bản (SSD1306)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sh1106-voi-can-le-128-cot-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      2) SH1106 với căn lề 128 cột (offset)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-ve-hinh-hoc-invert" class="md-nav__link">
+    <span class="md-ellipsis">
+      3) Vẽ hình học + invert
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#luu-y-phan-cung" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lưu ý phần cứng
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -608,6 +650,48 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Sample Code">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-hien-thi-chuoi-co-ban-ssd1306" class="md-nav__link">
+    <span class="md-ellipsis">
+      1) Hiển thị chuỗi cơ bản (SSD1306)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sh1106-voi-can-le-128-cot-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      2) SH1106 với căn lề 128 cột (offset)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-ve-hinh-hoc-invert" class="md-nav__link">
+    <span class="md-ellipsis">
+      3) Vẽ hình học + invert
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#luu-y-phan-cung" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lưu ý phần cứng
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -630,34 +714,79 @@
 
 
 <h1 id="oled_i2c-oled-i2c-module"><code>oled_i2c</code> — OLED I2C Module<a class="headerlink" href="#oled_i2c-oled-i2c-module" title="Permanent link">&para;</a></h1>
-<p>Chức năng chính và chức năng của <strong>oled_i2c</strong> (SSD1306/SH1106).</p>
+<p>Chức năng chính và chức năng của <strong>oled_i2c</strong> (SSD1306/SH1106). Phần này trình bày theo định dạng <em>Function / Sample Code</em> như bạn yêu cầu.</p>
+<hr />
 <h2 id="function">Function<a class="headerlink" href="#function" title="Permanent link">&para;</a></h2>
-<p><code>oled = Oled(board="s3", driver="SH1106", sh1106_offset=2)</code><br />
-Khởi tạo OLED đã được kết nối bằng <strong>I2C</strong>. <code>board</code>: preset chân; <code>driver</code>: <code>SSD1306</code> hoặc <code>SH1106</code>.</p>
-<p><code>oled.text(TEXT, X, Y)</code><br />
-Thiết lập nội dung (TEXT) lên màn hình tại vị trí mong muốn. X: 0..127, Y: 0..63.</p>
+<p><code>oled = Oled(board="s3", driver="SSD1306|SH1106", *, addr=0x3C, width=128, height=64, i2c_sda=None, i2c_scl=None, freq=400_000, backend="soft", sh1106_offset=2)</code><br />
+Khởi tạo đối tượng màn hình OLED qua <strong>I2C</strong>.
+- <strong>board</strong>: preset chân I2C. <code>"s3"</code> (mặc định: <code>SDA=17</code>, <code>SCL=18</code>) hoặc tự truyền <code>i2c_sda/i2c_scl</code> khi để <code>board=None</code>.
+- <strong>driver</strong>: <code>SSD1306</code> (chuẩn) hoặc <code>SH1106</code> (132 cột; vùng hiển thị 128 cột).
+- <strong>addr</strong>: địa chỉ I2C (thường <code>0x3C</code>).<br />
+- <strong>width/height</strong>: kích thước vùng đệm hiển thị (mặc định 128×64).<br />
+- <strong>backend</strong>: <code>"soft"</code> → dùng <code>SoftI2C</code>, <code>"hard"</code> → dùng <code>I2C</code> phần cứng (nếu chân phù hợp).<br />
+- <strong>freq</strong>: tần số I2C (Hz).<br />
+- <strong>sh1106_offset</strong>: dịch cột để canh 128 cột vào giữa (thường = <code>2</code> cho SH1106).</p>
+<p><code>oled.text(TEXT, X, Y, COLOR=1)</code><br />
+Vẽ chuỗi <code>TEXT</code> tại tọa độ <code>(X, Y)</code> với màu <code>COLOR</code>.<br />
+- <strong>X</strong>: 0..127 (pixel, tính từ trái qua).<br />
+- <strong>Y</strong>: 0..63 (pixel, tính từ trên xuống).<br />
+- <strong>COLOR</strong>: <code>1</code> = bật pixel, <code>0</code> = tắt pixel. Font mặc định 8×8.</p>
 <p><code>oled.show()</code><br />
-Lệnh hiển thị nội dung.</p>
-<p><code>oled.fill(0)</code><br />
-Xóa nội dung trên màn hình (<code>1</code> = trắng toàn màn).</p>
-<div class="admonition note">
-<p class="admonition-title">Tùy chọn khác</p>
-<p>Dùng <strong>factory</strong>:<br />
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">create</span>
-<span class="n">dev</span> <span class="o">=</span> <span class="n">create</span><span class="p">(</span><span class="n">ctrl</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">,</span> <span class="n">i2c_sda</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">i2c_scl</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span> <span class="n">addr</span><span class="o">=</span><span class="mh">0x3C</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;soft&quot;</span><span class="p">)</span>
-</code></pre></div>
-Với <strong>SH1106</strong> (132 cột), có thể cần <code>sh1106_offset=2</code> để canh 128 cột vào giữa.</p>
-</div>
+Đẩy bộ đệm (framebuffer) ra màn hình. <strong>Bắt buộc</strong> gọi sau khi vẽ để thấy nội dung.</p>
+<p><code>oled.fill(val)</code><br />
+Tô toàn màn hình với <code>val</code> (<code>0</code> = đen, <code>1</code> = trắng).<br />
+Gợi ý dùng <code>oled.clear()</code> (alias) để xóa nhanh.</p>
+<p><code>oled.clear()</code><br />
+Xóa nội dung trên màn hình (tương đương <code>fill(0)</code>), cần <code>show()</code> để áp dụng.</p>
+<p><code>oled.pixel(x, y, c=1)</code> • <code>oled.line(x0, y0, x1, y1, c=1)</code> • <code>oled.rect(x, y, w, h, c=1)</code> • <code>oled.fill_rect(x, y, w, h, c=1)</code><br />
+Các API vẽ cơ bản (ủy quyền từ framebuffer chuẩn của MicroPython).</p>
+<p><code>oled.invert(True|False)</code><br />
+Đảo màu hiển thị (nếu driver hỗ trợ).</p>
+<p><code>oled.contrast(val)</code><br />
+Đặt độ tương phản (<code>0..255</code>, nếu driver hỗ trợ).</p>
+<p><code>oled.poweron()</code> • <code>oled.poweroff()</code><br />
+Bật/tắt nguồn hiển thị (tiết kiệm năng lượng khi treo lâu).</p>
+<p><code>oled.info() -&gt; dict</code><br />
+Trả về thông tin: <code>{"width":..., "height":..., "addr":..., "i2c_id":...}</code> giúp gỡ lỗi nhanh.</p>
+<hr />
 <h2 id="sample-code">Sample Code<a class="headerlink" href="#sample-code" title="Permanent link">&para;</a></h2>
-<p>Hiển thị ký tự trên màn hình OLED:</p>
+<h3 id="1-hien-thi-chuoi-co-ban-ssd1306">1) Hiển thị chuỗi cơ bản (SSD1306)<a class="headerlink" href="#1-hien-thi-chuoi-co-ban-ssd1306" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
-<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SH1106&quot;</span><span class="p">)</span>  <span class="c1"># hoặc driver=&quot;SSD1306&quot;</span>
 
+<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">)</span>   <span class="c1"># hoặc board=None, i2c_sda=17, i2c_scl=18</span>
 <span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 <span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;MEBLOCK IOT&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 <span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Hello, ESP32!&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
 <span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
+<h3 id="2-sh1106-voi-can-le-128-cot-offset">2) SH1106 với căn lề 128 cột (offset)<a class="headerlink" href="#2-sh1106-voi-can-le-128-cot-offset" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
+
+<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SH1106&quot;</span><span class="p">,</span> <span class="n">sh1106_offset</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
+    <span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Line </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">//</span><span class="mi">8</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="3-ve-hinh-hoc-invert">3) Vẽ hình học + invert<a class="headerlink" href="#3-ve-hinh-hoc-invert" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
+<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">)</span>
+
+<span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">rect</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">fill_rect</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">127</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">oled</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h3 id="luu-y-phan-cung">Lưu ý phần cứng<a class="headerlink" href="#luu-y-phan-cung" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Địa chỉ mặc định phần lớn module OLED là <strong>0x3C</strong> (một số là <strong>0x3D</strong>).  </li>
+<li>Dây I2C nên ngắn, có điện trở kéo‑lên (pull‑up) phù hợp (thường 4.7k).  </li>
+<li>Nguồn 3.3V ổn định; nếu màn hình nhiễu, hạ <code>freq</code> I2C (100k–200k).</li>
+</ul>
 
 
 
