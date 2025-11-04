@@ -1,7 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://&lt;your-user&gt;.github.io/&lt;repo&gt;/</loc>
+         <loc>https://&lt;your-user&gt;.github.io/&lt;your-repo&gt;/</loc>
+         <lastmod>2025-11-04</lastmod>
+    </url>
+    <url>
+         <loc>https://&lt;your-user&gt;.github.io/&lt;your-repo&gt;/api/aiot_dht/</loc>
+         <lastmod>2025-11-04</lastmod>
+    </url>
+    <url>
+         <loc>https://&lt;your-user&gt;.github.io/&lt;your-repo&gt;/api/mqtt/</loc>
+         <lastmod>2025-11-04</lastmod>
+    </url>
+    <url>
+         <loc>https://&lt;your-user&gt;.github.io/&lt;your-repo&gt;/api/oled_i2c/</loc>
+         <lastmod>2025-11-04</lastmod>
+    </url>
+    <url>
+         <loc>https://&lt;your-user&gt;.github.io/&lt;your-repo&gt;/guides/troubleshooting/</loc>
          <lastmod>2025-11-04</lastmod>
     </url>
 </urlset>

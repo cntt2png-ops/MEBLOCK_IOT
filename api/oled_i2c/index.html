@@ -10,19 +10,25 @@
       
       
       
+        <link rel="canonical" href="https://<your-user>.github.io/<your-repo>/api/oled_i2c/">
       
       
+        <link rel="prev" href="../..">
       
-      <link rel="icon" href="/<your-repo>/assets/images/favicon.png">
+      
+        <link rel="next" href="../mqtt/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
     
     
       
-        <title>MEBLOCK IOT | MicroPython API</title>
+        <title>oled_i2c — OLED I2C Module - MEBLOCK IOT | MicroPython API</title>
       
     
     
-      <link rel="stylesheet" href="/<your-repo>/assets/stylesheets/main.84d31ad4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
       
       
 
@@ -41,7 +47,7 @@
       
     
     
-    <script>__md_scope=new URL("/<your-repo>/",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -59,6 +65,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#oled_i2c-oled-i2c-module" class="md-skip">
+          Bỏ qua
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -69,7 +80,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Đầu trang">
-    <a href="/<your-repo>/." title="MEBLOCK IOT | MicroPython API" class="md-header__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
+    <a href="../.." title="MEBLOCK IOT | MicroPython API" class="md-header__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -89,7 +100,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              oled_i2c — OLED I2C Module
             
           </span>
         </div>
@@ -176,7 +187,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="/<your-repo>/." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -193,11 +204,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="/<your-repo>/api/oled_i2c/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -217,7 +230,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/<your-repo>/guides/troubleshooting/" class="md-tabs__link">
+        <a href="../../guides/troubleshooting/" class="md-tabs__link">
           
   
   
@@ -251,7 +264,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Thanh điều hướng" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/<your-repo>/." title="MEBLOCK IOT | MicroPython API" class="md-nav__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
+    <a href="../.." title="MEBLOCK IOT | MicroPython API" class="md-nav__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -281,7 +294,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/<your-repo>/." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -300,26 +313,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -332,7 +350,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             1. MicroPython API
@@ -343,10 +361,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/<your-repo>/api/oled_i2c/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    oled_i2c — OLED I2C Module
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -357,6 +397,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Mục lục">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Mục lục
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#function" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample Code
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -369,7 +447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/<your-repo>/api/mqtt/" class="md-nav__link">
+      <a href="../mqtt/" class="md-nav__link">
         
   
   
@@ -392,7 +470,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/<your-repo>/api/aiot_dht/" class="md-nav__link">
+      <a href="../aiot_dht/" class="md-nav__link">
         
   
   
@@ -465,7 +543,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/<your-repo>/guides/troubleshooting/" class="md-nav__link">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
         
   
   
@@ -505,6 +583,34 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Mục lục
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#function" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sample-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample Code
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -516,8 +622,55 @@
             <div class="md-content" data-md-component="content">
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
 
+
+  
+  
+
+
+<h1 id="oled_i2c-oled-i2c-module"><code>oled_i2c</code> — OLED I2C Module<a class="headerlink" href="#oled_i2c-oled-i2c-module" title="Permanent link">&para;</a></h1>
+<p>Chức năng chính và chức năng của <strong>oled_i2c</strong> (SSD1306/SH1106).</p>
+<h2 id="function">Function<a class="headerlink" href="#function" title="Permanent link">&para;</a></h2>
+<p><code>oled = Oled(board="s3", driver="SH1106", sh1106_offset=2)</code><br />
+Khởi tạo OLED đã được kết nối bằng <strong>I2C</strong>. <code>board</code>: preset chân; <code>driver</code>: <code>SSD1306</code> hoặc <code>SH1106</code>.</p>
+<p><code>oled.text(TEXT, X, Y)</code><br />
+Thiết lập nội dung (TEXT) lên màn hình tại vị trí mong muốn. X: 0..127, Y: 0..63.</p>
+<p><code>oled.show()</code><br />
+Lệnh hiển thị nội dung.</p>
+<p><code>oled.fill(0)</code><br />
+Xóa nội dung trên màn hình (<code>1</code> = trắng toàn màn).</p>
+<div class="admonition note">
+<p class="admonition-title">Tùy chọn khác</p>
+<p>Dùng <strong>factory</strong>:<br />
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">create</span>
+<span class="n">dev</span> <span class="o">=</span> <span class="n">create</span><span class="p">(</span><span class="n">ctrl</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">,</span> <span class="n">i2c_sda</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">i2c_scl</span><span class="o">=</span><span class="mi">22</span><span class="p">,</span> <span class="n">addr</span><span class="o">=</span><span class="mh">0x3C</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;soft&quot;</span><span class="p">)</span>
+</code></pre></div>
+Với <strong>SH1106</strong> (132 cột), có thể cần <code>sh1106_offset=2</code> để canh 128 cột vào giữa.</p>
+</div>
+<h2 id="sample-code">Sample Code<a class="headerlink" href="#sample-code" title="Permanent link">&para;</a></h2>
+<p>Hiển thị ký tự trên màn hình OLED:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
+<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SH1106&quot;</span><span class="p">)</span>  <span class="c1"># hoặc driver=&quot;SSD1306&quot;</span>
+
+<span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;MEBLOCK IOT&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Hello, ESP32!&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -559,10 +712,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "/\u003cyour-repo\u003e/", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "search.suggest", "search.highlight"], "search": "/\u003cyour-repo\u003e/assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u0110\u00e3 sao ch\u00e9p", "clipboard.copy": "Sao ch\u00e9p v\u00e0o b\u1ed9 nh\u1edb t\u1ea1m", "search.result.more.one": "1 t\u1eeb kh\u00e1c trong trang", "search.result.more.other": "# t\u1eeb kh\u00e1c trong trang", "search.result.none": "Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i li\u1ec7u li\u00ean quan", "search.result.one": "1 t\u00e0i li\u1ec7u li\u00ean quan", "search.result.other": "# t\u00e0i li\u1ec7u li\u00ean quan", "search.result.placeholder": "Nh\u1eadp \u0111\u1ec3 b\u1eaft \u0111\u1ea7u t\u00ecm ki\u1ebfm", "search.result.term.missing": "Kh\u00f4ng", "select.version": "Ch\u1ecdn phi\u00ean b\u1ea3n"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u0110\u00e3 sao ch\u00e9p", "clipboard.copy": "Sao ch\u00e9p v\u00e0o b\u1ed9 nh\u1edb t\u1ea1m", "search.result.more.one": "1 t\u1eeb kh\u00e1c trong trang", "search.result.more.other": "# t\u1eeb kh\u00e1c trong trang", "search.result.none": "Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i li\u1ec7u li\u00ean quan", "search.result.one": "1 t\u00e0i li\u1ec7u li\u00ean quan", "search.result.other": "# t\u00e0i li\u1ec7u li\u00ean quan", "search.result.placeholder": "Nh\u1eadp \u0111\u1ec3 b\u1eaft \u0111\u1ea7u t\u00ecm ki\u1ebfm", "search.result.term.missing": "Kh\u00f4ng", "select.version": "Ch\u1ecdn phi\u00ean b\u1ea3n"}, "version": null}</script>
     
     
-      <script src="/<your-repo>/assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>
