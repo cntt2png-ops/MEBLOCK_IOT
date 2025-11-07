@@ -6,17 +6,15 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Tài liệu thư viện thiết bị ESP32 MicroPython (MQTT, OLED, DHT)">
+        <meta name="description" content="Tài liệu thư viện thiết bị (MQTT, OLED, DHT, Ultrasonic) cho ESP32/ESP32-S3">
       
       
       
-        <link rel="canonical" href="https://<your-user>.github.io/<your-repo>/api/oled_i2c/">
+      
+        <link rel="prev" href="../mqtt/">
       
       
-        <link rel="prev" href="../..">
-      
-      
-        <link rel="next" href="../mqtt/">
+        <link rel="next" href="../aiot_dht/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -24,7 +22,7 @@
     
     
       
-        <title>oled_i2c — OLED I2C Module - MEBLOCK IOT | MicroPython API</title>
+        <title>oled_i2c — OLED I2C Module - MEBLOCK IOT | ESP32 MicroPython API</title>
       
     
     
@@ -47,6 +45,8 @@
       
     
     
+      <link rel="stylesheet" href="../../styles/api.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oled_i2c-oled-i2c-module" class="md-skip">
+        <a href="#oled_i2c-oled-i2c-module-ssd1306sh1106-compact" class="md-skip">
           Bỏ qua
         </a>
       
@@ -80,7 +80,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Đầu trang">
-    <a href="../.." title="MEBLOCK IOT | MicroPython API" class="md-header__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
+    <a href="../.." title="MEBLOCK IOT | ESP32 MicroPython API" class="md-header__button md-logo" aria-label="MEBLOCK IOT | ESP32 MicroPython API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -94,7 +94,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            MEBLOCK IOT | MicroPython API
+            MEBLOCK IOT | ESP32 MicroPython API
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -137,8 +137,6 @@
         </button>
       </nav>
       
-        <div class="md-search__suggest" data-md-component="search-suggest"></div>
-      
     </form>
     <div class="md-search__output">
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
@@ -154,18 +152,6 @@
 </div>
       
     
-    
-      <div class="md-header__source">
-        <a href="https://github.com/<your-user>/<your-repo>" title="Xem mã nguồn" class="md-source" data-md-component="source">
-  <div class="md-source__icon md-icon">
-    
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
-  </div>
-  <div class="md-source__repository">
-    <your-user>/<your-repo>
-  </div>
-</a>
-      </div>
     
   </nav>
   
@@ -210,31 +196,11 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../mqtt/" class="md-tabs__link">
           
   
   
   1. MicroPython API
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../guides/troubleshooting/" class="md-tabs__link">
-          
-  
-  
-  Hướng dẫn
 
         </a>
       </li>
@@ -264,26 +230,14 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Thanh điều hướng" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="MEBLOCK IOT | MicroPython API" class="md-nav__button md-logo" aria-label="MEBLOCK IOT | MicroPython API" data-md-component="logo">
+    <a href="../.." title="MEBLOCK IOT | ESP32 MicroPython API" class="md-nav__button md-logo" aria-label="MEBLOCK IOT | ESP32 MicroPython API" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    MEBLOCK IOT | MicroPython API
+    MEBLOCK IOT | ESP32 MicroPython API
   </label>
-  
-    <div class="md-nav__source">
-      <a href="https://github.com/<your-user>/<your-repo>" title="Xem mã nguồn" class="md-source" data-md-component="source">
-  <div class="md-source__icon md-icon">
-    
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
-  </div>
-  <div class="md-source__repository">
-    <your-user>/<your-repo>
-  </div>
-</a>
-    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -361,6 +315,29 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../mqtt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    mqtt — MQTT Helper
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -422,84 +399,10 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#sample-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      Sample Code
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Sample Code">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-hien-thi-chuoi-co-ban-ssd1306" class="md-nav__link">
-    <span class="md-ellipsis">
-      1) Hiển thị chuỗi cơ bản (SSD1306)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-sh1106-voi-can-le-128-cot-offset" class="md-nav__link">
-    <span class="md-ellipsis">
-      2) SH1106 với căn lề 128 cột (offset)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-ve-hinh-hoc-invert" class="md-nav__link">
-    <span class="md-ellipsis">
-      3) Vẽ hình học + invert
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#luu-y-phan-cung" class="md-nav__link">
-    <span class="md-ellipsis">
-      Lưu ý phần cứng
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mqtt/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    mqtt — MQTT Helper
-    
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -528,56 +431,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
-        
-          
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    Hướng dẫn
-    
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            Hướng dẫn
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
               
                 
   
@@ -585,12 +438,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/troubleshooting/" class="md-nav__link">
+      <a href="../ultrasonic/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Xử lý lỗi
+    ultrasonic — HC‑SR04
     
   </span>
   
@@ -643,57 +496,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#sample-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      Sample Code
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Sample Code">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-hien-thi-chuoi-co-ban-ssd1306" class="md-nav__link">
-    <span class="md-ellipsis">
-      1) Hiển thị chuỗi cơ bản (SSD1306)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-sh1106-voi-can-le-128-cot-offset" class="md-nav__link">
-    <span class="md-ellipsis">
-      2) SH1106 với căn lề 128 cột (offset)
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-ve-hinh-hoc-invert" class="md-nav__link">
-    <span class="md-ellipsis">
-      3) Vẽ hình học + invert
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#luu-y-phan-cung" class="md-nav__link">
-    <span class="md-ellipsis">
-      Lưu ý phần cứng
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -709,84 +511,24 @@
                   
 
 
-  
-  
 
-
-<h1 id="oled_i2c-oled-i2c-module"><code>oled_i2c</code> — OLED I2C Module<a class="headerlink" href="#oled_i2c-oled-i2c-module" title="Permanent link">&para;</a></h1>
-<p>Chức năng chính và chức năng của <strong>oled_i2c</strong> (SSD1306/SH1106). Phần này trình bày theo định dạng <em>Function / Sample Code</em> như bạn yêu cầu.</p>
-<hr />
+<h1 id="oled_i2c-oled-i2c-module-ssd1306sh1106-compact"><code>oled_i2c</code> — OLED I2C Module (SSD1306/SH1106, Compact)<a class="headerlink" href="#oled_i2c-oled-i2c-module-ssd1306sh1106-compact" title="Permanent link">&para;</a></h1>
 <h2 id="function">Function<a class="headerlink" href="#function" title="Permanent link">&para;</a></h2>
-<p><code>oled = Oled(board="s3", driver="SSD1306|SH1106", *, addr=0x3C, width=128, height=64, i2c_sda=None, i2c_scl=None, freq=400_000, backend="soft", sh1106_offset=2)</code><br />
-Khởi tạo đối tượng màn hình OLED qua <strong>I2C</strong>.
-- <strong>board</strong>: preset chân I2C. <code>"s3"</code> (mặc định: <code>SDA=17</code>, <code>SCL=18</code>) hoặc tự truyền <code>i2c_sda/i2c_scl</code> khi để <code>board=None</code>.
-- <strong>driver</strong>: <code>SSD1306</code> (chuẩn) hoặc <code>SH1106</code> (132 cột; vùng hiển thị 128 cột).
-- <strong>addr</strong>: địa chỉ I2C (thường <code>0x3C</code>).<br />
-- <strong>width/height</strong>: kích thước vùng đệm hiển thị (mặc định 128×64).<br />
-- <strong>backend</strong>: <code>"soft"</code> → dùng <code>SoftI2C</code>, <code>"hard"</code> → dùng <code>I2C</code> phần cứng (nếu chân phù hợp).<br />
-- <strong>freq</strong>: tần số I2C (Hz).<br />
-- <strong>sh1106_offset</strong>: dịch cột để canh 128 cột vào giữa (thường = <code>2</code> cho SH1106).</p>
-<p><code>oled.text(TEXT, X, Y, COLOR=1)</code><br />
-Vẽ chuỗi <code>TEXT</code> tại tọa độ <code>(X, Y)</code> với màu <code>COLOR</code>.<br />
-- <strong>X</strong>: 0..127 (pixel, tính từ trái qua).<br />
-- <strong>Y</strong>: 0..63 (pixel, tính từ trên xuống).<br />
-- <strong>COLOR</strong>: <code>1</code> = bật pixel, <code>0</code> = tắt pixel. Font mặc định 8×8.</p>
-<p><code>oled.show()</code><br />
-Đẩy bộ đệm (framebuffer) ra màn hình. <strong>Bắt buộc</strong> gọi sau khi vẽ để thấy nội dung.</p>
-<p><code>oled.fill(val)</code><br />
-Tô toàn màn hình với <code>val</code> (<code>0</code> = đen, <code>1</code> = trắng).<br />
-Gợi ý dùng <code>oled.clear()</code> (alias) để xóa nhanh.</p>
-<p><code>oled.clear()</code><br />
-Xóa nội dung trên màn hình (tương đương <code>fill(0)</code>), cần <code>show()</code> để áp dụng.</p>
-<p><code>oled.pixel(x, y, c=1)</code> • <code>oled.line(x0, y0, x1, y1, c=1)</code> • <code>oled.rect(x, y, w, h, c=1)</code> • <code>oled.fill_rect(x, y, w, h, c=1)</code><br />
-Các API vẽ cơ bản (ủy quyền từ framebuffer chuẩn của MicroPython).</p>
-<p><code>oled.invert(True|False)</code><br />
-Đảo màu hiển thị (nếu driver hỗ trợ).</p>
-<p><code>oled.contrast(val)</code><br />
-Đặt độ tương phản (<code>0..255</code>, nếu driver hỗ trợ).</p>
-<p><code>oled.poweron()</code> • <code>oled.poweroff()</code><br />
-Bật/tắt nguồn hiển thị (tiết kiệm năng lượng khi treo lâu).</p>
-<p><code>oled.info() -&gt; dict</code><br />
-Trả về thông tin: <code>{"width":..., "height":..., "addr":..., "i2c_id":...}</code> giúp gỡ lỗi nhanh.</p>
-<hr />
-<h2 id="sample-code">Sample Code<a class="headerlink" href="#sample-code" title="Permanent link">&para;</a></h2>
-<h3 id="1-hien-thi-chuoi-co-ban-ssd1306">1) Hiển thị chuỗi cơ bản (SSD1306)<a class="headerlink" href="#1-hien-thi-chuoi-co-ban-ssd1306" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
-
-<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">)</span>   <span class="c1"># hoặc board=None, i2c_sda=17, i2c_scl=18</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;MEBLOCK IOT&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Hello, ESP32!&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<p><pre class="api-signature"><code>Oled(driver="SSD1306", *, board=None, sda=None, scl=None, sh1106_offset=2)</code></pre>
+Khởi tạo nhanh. Mặc định màn 128×64. Với <strong>SH1106</strong>, dùng <code>sh1106_offset=2</code> để canh 128 cột.</p>
+<p><pre class="api-signature"><code>text(s, x, y, color=1) • show() • fill(v=0) • clear()</code></pre>
+API khung hình (framebuffer). <code>color</code>: <code>0</code> = tắt, <code>1</code> = bật.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Sample Code</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block"></div>
+</div>
+</div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SH1106&quot;</span><span class="p">)</span>          <span class="c1"># hoặc &quot;SSD1306&quot;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Hello, ESP32!&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </code></pre></div>
-<h3 id="2-sh1106-voi-can-le-128-cot-offset">2) SH1106 với căn lề 128 cột (offset)<a class="headerlink" href="#2-sh1106-voi-can-le-128-cot-offset" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
-
-<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SH1106&quot;</span><span class="p">,</span> <span class="n">sh1106_offset</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">8</span><span class="p">):</span>
-    <span class="n">oled</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Line </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="o">//</span><span class="mi">8</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</code></pre></div>
-<h3 id="3-ve-hinh-hoc-invert">3) Vẽ hình học + invert<a class="headerlink" href="#3-ve-hinh-hoc-invert" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">oled</span><span class="w"> </span><span class="kn">import</span> <span class="n">Oled</span>
-<span class="n">oled</span> <span class="o">=</span> <span class="n">Oled</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span> <span class="n">driver</span><span class="o">=</span><span class="s2">&quot;SSD1306&quot;</span><span class="p">)</span>
-
-<span class="n">oled</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">rect</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">fill_rect</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">127</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">oled</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-
-<span class="n">oled</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h3 id="luu-y-phan-cung">Lưu ý phần cứng<a class="headerlink" href="#luu-y-phan-cung" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Địa chỉ mặc định phần lớn module OLED là <strong>0x3C</strong> (một số là <strong>0x3D</strong>).  </li>
-<li>Dây I2C nên ngắn, có điện trở kéo‑lên (pull‑up) phù hợp (thường 4.7k).  </li>
-<li>Nguồn 3.3V ổn định; nếu màn hình nhiễu, hạ <code>freq</code> I2C (100k–200k).</li>
-</ul>
 
 
 
@@ -841,7 +583,7 @@ Trả về thông tin: <code>{"width":..., "height":..., "addr":..., "i2c_id":..
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u0110\u00e3 sao ch\u00e9p", "clipboard.copy": "Sao ch\u00e9p v\u00e0o b\u1ed9 nh\u1edb t\u1ea1m", "search.result.more.one": "1 t\u1eeb kh\u00e1c trong trang", "search.result.more.other": "# t\u1eeb kh\u00e1c trong trang", "search.result.none": "Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i li\u1ec7u li\u00ean quan", "search.result.one": "1 t\u00e0i li\u1ec7u li\u00ean quan", "search.result.other": "# t\u00e0i li\u1ec7u li\u00ean quan", "search.result.placeholder": "Nh\u1eadp \u0111\u1ec3 b\u1eaft \u0111\u1ea7u t\u00ecm ki\u1ebfm", "search.result.term.missing": "Kh\u00f4ng", "select.version": "Ch\u1ecdn phi\u00ean b\u1ea3n"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u0110\u00e3 sao ch\u00e9p", "clipboard.copy": "Sao ch\u00e9p v\u00e0o b\u1ed9 nh\u1edb t\u1ea1m", "search.result.more.one": "1 t\u1eeb kh\u00e1c trong trang", "search.result.more.other": "# t\u1eeb kh\u00e1c trong trang", "search.result.none": "Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i li\u1ec7u li\u00ean quan", "search.result.one": "1 t\u00e0i li\u1ec7u li\u00ean quan", "search.result.other": "# t\u00e0i li\u1ec7u li\u00ean quan", "search.result.placeholder": "Nh\u1eadp \u0111\u1ec3 b\u1eaft \u0111\u1ea7u t\u00ecm ki\u1ebfm", "search.result.term.missing": "Kh\u00f4ng", "select.version": "Ch\u1ecdn phi\u00ean b\u1ea3n"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>

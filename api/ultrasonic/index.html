@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../oled_i2c/">
+        <link rel="prev" href="../aiot_dht/">
       
-      
-        <link rel="next" href="../ultrasonic/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -22,7 +20,7 @@
     
     
       
-        <title>aiot_dht — DHT Sensors - MEBLOCK IOT | ESP32 MicroPython API</title>
+        <title>ultrasonic — HC‑SR04 - MEBLOCK IOT | ESP32 MicroPython API</title>
       
     
     
@@ -66,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#aiot_dht-dht-sensors-compact" class="md-skip">
+        <a href="#ultrasonic-hcsr04-compact" class="md-skip">
           Bỏ qua
         </a>
       
@@ -100,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              aiot_dht — DHT Sensors
+              ultrasonic — HC‑SR04
             
           </span>
         </div>
@@ -361,6 +359,29 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../aiot_dht/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    aiot_dht — DHT Sensors
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -378,7 +399,7 @@
   
   
   <span class="md-ellipsis">
-    aiot_dht — DHT Sensors
+    ultrasonic — HC‑SR04
     
   </span>
   
@@ -391,7 +412,7 @@
   
   
   <span class="md-ellipsis">
-    aiot_dht — DHT Sensors
+    ultrasonic — HC‑SR04
     
   </span>
   
@@ -426,29 +447,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ultrasonic/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    ultrasonic — HC‑SR04
-    
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -512,21 +510,20 @@
 
 
 
-<h1 id="aiot_dht-dht-sensors-compact"><code>aiot_dht</code> — DHT Sensors (Compact)<a class="headerlink" href="#aiot_dht-dht-sensors-compact" title="Permanent link">&para;</a></h1>
+<h1 id="ultrasonic-hcsr04-compact"><code>ultrasonic</code> — HC‑SR04 (Compact)<a class="headerlink" href="#ultrasonic-hcsr04-compact" title="Permanent link">&para;</a></h1>
 <h2 id="function">Function<a class="headerlink" href="#function" title="Permanent link">&para;</a></h2>
-<p><pre class="api-signature"><code>AIOT_DHT(sensor, *, board=None, sda=None, scl=None, pin=None)</code></pre>
-Tạo cảm biến DHT: <code>"dht20"|"aht20"|"dht11"</code>. I2C dùng <code>board</code> hoặc <code>sda/scl</code>; DHT11 dùng <code>pin</code>.</p>
-<pre class="api-signature"><code>read() -&gt; bool • temperature() -&gt; float • humidity() -&gt; float</code></pre>
+<p><pre class="api-signature"><code>HCSR04(trigger_pin, echo_pin)</code></pre>
+Khởi tạo đơn giản nhất.</p>
+<p><pre class="api-signature"><code>distance_cm() -&gt; float</code></pre>
+Trả về khoảng cách tính bằng cm.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Sample Code</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block"></div>
 </div>
 </div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiot_dht</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIOT_DHT</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">d</span> <span class="o">=</span> <span class="n">AIOT_DHT</span><span class="p">(</span><span class="s2">&quot;dht20&quot;</span><span class="p">,</span> <span class="n">board</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">read</span><span class="p">():</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">temperature</span><span class="p">(),</span> <span class="n">d</span><span class="o">.</span><span class="n">humidity</span><span class="p">())</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">ultrasonic</span><span class="w"> </span><span class="kn">import</span> <span class="n">HCSR04</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">sensor</span> <span class="o">=</span> <span class="n">HCSR04</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>   <span class="c1"># TRIG=2, ECHO=3</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">print</span><span class="p">(</span><span class="n">sensor</span><span class="o">.</span><span class="n">distance_cm</span><span class="p">(),</span> <span class="s2">&quot;cm&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 
