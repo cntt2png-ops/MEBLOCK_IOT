@@ -1,8 +1,5 @@
 site_name: MEBLOCK IOT | MicroPython API
-site_description: Tài liệu thư viện thiết bị ESP32 MicroPython (MQTT, OLED, DHT)
-site_url: https://<your-user>.github.io/<your-repo>
-repo_url: https://github.com/<your-user>/<your-repo>
-repo_name: <your-user>/<your-repo>
+site_description: Tài liệu thư viện thiết bị ESP32 MicroPython (MQTT, OLED, DHT, Ultrasonic)
 
 theme:
   name: material
@@ -12,8 +9,7 @@ theme:
     - navigation.sections
     - navigation.top
     - content.code.copy
-    - search.suggest
-    - search.highlight
+    - content.code.annotate
 
 plugins:
   - search
@@ -29,16 +25,28 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: sig
+          class: api-signature
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums_style: table
+  - pymdownx.inlinehilite
+  - pymdownx.mark
   - toc:
       permalink: true
 
+extra_css:
+  - styles/api.css
+
 nav:
-  - 📚 Tổng quan: index.md
-  - 1. MicroPython API:
-      - oled_i2c — OLED I2C Module: api/oled_i2c.md
-      - mqtt — MQTT Helper: api/mqtt.md
-      - aiot_dht — DHT Sensors: api/aiot_dht.md
-  - Hướng dẫn:
-      - Xử lý lỗi: guides/troubleshooting.md
+  - "1. MicroPython API": index.md
+  - "Modules":
+      - "mqtt — MQTT Helper": api/mqtt.md
+      - "oled — OLED I2C Module": api/oled.md
+      - "dht — DHT Sensors": api/dht.md
+      - "ultrasonic — HC-SR04": api/ultrasonic.md
+  - "Hướng dẫn":
+      - "Xử lý lỗi": guides/troubleshooting.md
