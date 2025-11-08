@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ESP32 Web Serial Uploader (MicroPython)</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 840px; margin: 24px auto; padding: 0 16px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+      input[type="text"], input[type="file"], button { padding: 8px 10px; font-size: 14px; border-radius: 10px; border: 1px solid #ccc; }
+      button.primary { background: #0b5; color: #fff; border-color: #0a4; }
+      #progress { width: 100%; height: 10px; background: #eee; border-radius: 999px; overflow: hidden; margin: 6px 0 10px; }
+      #bar { height: 100%; width: 0%; background: #0b5; }
+      #log { background:#111;color:#eee;padding:12px;height:280px;overflow:auto; white-space: pre-wrap; border-radius: 12px; }
+    </style>
+  </head>
+  <body>
+    <h3>ESP32 Web Serial Uploader</h3>
+    <div class="row">
+      <button id="btnConnect" class="primary">🔌 Kết nối Serial</button>
+      <button id="btnDisconnect">Ngắt</button>
+    </div>
+    <div class="row">
+      <input id="file" type="file" accept=".py,.txt,.json,.cfg,.bin" />
+      <input id="fname" type="text" placeholder="Tên lưu trên ESP (vd: main.py)" value="main.py" />
+      <button id="btnUpload">⬆️ Nạp file</button>
+    </div>
+    <div id="progress"><div id="bar"></div></div>
+    <pre id="log"></pre>
+
+    <script type="module">
+      import { WebSerialUploader } from './web_serial_uploader.js';
+
+      const $ = s => document.querySelector(s);
+      const log = (...a)=>{ $('#log').textContent += a.join(' ') + '\n'; $('#log').scrollTop = $('#log').scrollHeight; };
+      const setProgress = (p)=>{ $('#bar').style.width = (p|0) + '%'; };
+
+      const up = new WebSerialUploader({ onLog: log, onProgress: setProgress });
+
+      $('#btnConnect').onclick = async () => {
+        try { await up.connect(); toggle(true); } catch (e) { log('Lỗi connect:', e); }
+      };
+      $('#btnDisconnect').onclick = async () => { await up.disconnect(); toggle(false); };
+
+      $('#btnUpload').onclick = async () => {
+        const f = $('#file').files[0];
+        const name = ($('#fname').value || 'main.py').trim();
+        if (!f) return log('Chọn file cần nạp trước.');
+        try {
+          // chunk 768 ổn định, autoReset mặc định TRUE => chạy luôn main.py sau nạp
+          await up.upload(f, name, { chunk: 768 });
+        } catch (e) {
+          log('Upload lỗi:', e);
+        }
+      };
+
+      function toggle(connected) {
+        $('#btnConnect').disabled = connected;
+        $('#btnDisconnect').disabled = !connected;
+        $('#btnUpload').disabled = !connected;
+      }
+      toggle(false);
+    </script>
+  </body>
+</html>

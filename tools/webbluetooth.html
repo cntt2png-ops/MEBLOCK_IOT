@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>ESP32 Web Bluetooth Uploader (NUS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 1.35rem; margin: 0 0 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+    .col { display: flex; flex-direction: column; gap: 8px; }
+    label { font-size: 13px; color: #444; }
+    input[type="text"], input[type="number"], input[type="file"] {
+      padding: 8px 10px; border: 1px solid #ccc; border-radius: 10px; font-size: 14px;
+    }
+    button { padding: 8px 12px; border-radius: 10px; border: 1px solid #ccc; background: #f6f6f6; cursor: pointer; }
+    button.primary { background: #0b5; color: #fff; border-color: #0a4; }
+    button.danger  { background: #e33; color: #fff; border-color: #c11; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    #progress { width: 100%; height: 10px; background: #eee; border-radius: 999px; overflow: hidden; }
+    #bar { height: 100%; width: 0%; background: #0b5; }
+    #log { background: #0b0b0b; color: #eaeaea; padding: 12px; min-height: 260px; white-space: pre-wrap; border-radius: 12px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #ccc; font-size:12px; margin-left:6px;}
+    .muted { color:#666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>ESP32 Web Bluetooth Uploader <span class="pill">Nordic UART</span><span class="pill">HTTPS/localhost</span></h1>
+
+  <div class="row">
+    <div class="col" style="flex:1 1 260px;">
+      <label>Tên BLE để lọc (ví dụ: <code>MEBLOCK-TOPKID</code>) — để trống để quét tất cả</label>
+      <input id="devName" type="text" placeholder="ESP32-BLE-OTA / MEBLOCK-TOPKID" />
+    </div>
+    <div class="col" style="flex:0 0 280px;">
+      <label>&nbsp;</label>
+      <div class="row">
+        <button id="btnConnect" class="primary">🔗 Kết nối</button>
+        <button id="btnDisconnect">🔌 Ngắt</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="btnPing">PING</button>
+    <button id="btnLs">LS</button>
+    <button id="btnReset" class="danger">RESET</button>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex:1 1 220px;">
+      <label>Tên lưu trên ESP32</label>
+      <input id="fname" type="text" placeholder="main.py" value="main.py" />
+    </div>
+    <div class="col" style="flex:1 1 320px;">
+      <label>Chọn file (sẽ nạp qua PUT/DATA/DONE)</label>
+      <input id="fsel" type="file" accept=".py,.txt,.json,.cfg,.bin" />
+    </div>
+    <div class="col" style="flex:0 0 160px;">
+      <label>Chunk (byte gốc)</label>
+      <input id="chunk" type="number" min="64" max="1024" step="64" value="256" />
+    </div>
+    <div class="col" style="flex:0 0 200px;">
+      <label>&nbsp;</label>
+      <div class="row" style="align-items:center;">
+        <label><input id="waitAck" type="checkbox" checked /> Chờ ACK</label>
+        <label><input id="autoReset" type="checkbox" /> Auto reset</label>
+      </div>
+    </div>
+    <div class="col" style="flex:0 0 140px;">
+      <label>&nbsp;</label>
+      <button id="btnUpload">⬆️ Upload</button>
+    </div>
+  </div>
+
+  <div id="progress"><div id="bar"></div></div>
+  <p class="muted">Gợi ý: thiết bị phải quảng bá NUS; trong <code>bleuart.py</code> nên “chia” payload adv (UUID ở adv, tên ở scan response) và tăng buffer GATT.</p>
+
+  <pre id="log"></pre>
+
+<script>
+/* ====== UUID dịch vụ Nordic UART ====== */
+const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // Write
+const NUS_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // Notify
+
+/* ====== Trạng thái/tiện ích UI ====== */
+const $ = s => document.querySelector(s);
+const logEl = $('#log'), barEl = $('#bar');
+const log = (...a)=>{ logEl.textContent += a.join(' ') + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+const setBar = p => { barEl.style.width = Math.max(0, Math.min(100, p)) + '%'; };
+
+/* ====== Kết nối BLE ====== */
+let device = null, server = null, service = null, rxChar = null, txChar = null;
+let connected = false;
+let rxTextBuf = ''; // buffer ghép dòng từ TX notify
+let pendingAckResolve = null;     // chờ "OK <left>"
+let pendingSavedResolve = null;   // chờ "OK SAVED"
+
+async function connect() {
+  try {
+    if (!navigator.bluetooth) { log('Trình duyệt không hỗ trợ Web Bluetooth. Dùng Chrome/Edge mới.'); return; }
+    const nameFilter = $('#devName').value.trim();
+    const options = nameFilter
+      ? { filters: [{ name: nameFilter }], optionalServices: [NUS_SERVICE] }
+      : { acceptAllDevices: true, optionalServices: [NUS_SERVICE] };
+
+    device = await navigator.bluetooth.requestDevice(options);
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    log('Đang kết nối:', device.name || '(không tên)');
+    server  = await device.gatt.connect();
+    service = await server.getPrimaryService(NUS_SERVICE);
+    txChar  = await service.getCharacteristic(NUS_TX);
+    rxChar  = await service.getCharacteristic(NUS_RX);
+
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', onNotify);
+
+    connected = true;
+    log('✅ Đã kết nối & bật notify.');
+  } catch (e) {
+    log('Lỗi kết nối:', e);
+  }
+}
+
+function onDisconnected() {
+  connected = false; device = server = service = rxChar = txChar = null;
+  rxTextBuf = ''; pendingAckResolve = null; pendingSavedResolve = null;
+  log('🔌 Đã ngắt kết nối.');
+}
+
+function onNotify(ev) {
+  const v = new TextDecoder().decode(ev.target.value);
+  // show raw (tiện debug)
+  const toShow = v.replace(/\r/g,'');
+  if (toShow.trim().length) log('<=', toShow.trimEnd());
+
+  rxTextBuf += v;
+  // tách theo newline
+  let idx;
+  while ((idx = rxTextBuf.indexOf('\n')) >= 0) {
+    const line = rxTextBuf.slice(0, idx).trim();
+    rxTextBuf = rxTextBuf.slice(idx + 1);
+
+    const low = line.toLowerCase();
+    // OK <left>
+    const m = low.match(/^ok\s+(\d+)\s*$/);
+    if (m && pendingAckResolve) {
+      const left = parseInt(m[1], 10);
+      try { pendingAckResolve(left); } catch(_) {}
+      pendingAckResolve = null;
+      continue;
+    }
+    // OK SAVED / WARN LEFT ...
+    if ((low.indexOf('ok saved') === 0 || low.indexOf('warn left') === 0) && pendingSavedResolve) {
+      try { pendingSavedResolve(true); } catch(_) {}
+      pendingSavedResolve = null;
+      continue;
+    }
+    // ERR ...
+    if (low.indexOf('err') === 0 && pendingSavedResolve) {
+      try { pendingSavedResolve(false); } catch(_) {}
+      pendingSavedResolve = null;
+      continue;
+    }
+  }
+}
+
+/* ====== Gửi lệnh/ghi dữ liệu (chia nhỏ 20B) ====== */
+async function writeBLE(data, chunk = 20, pause = 8) {
+  if (!rxChar) throw new Error('RX characteristic chưa sẵn sàng');
+  if (typeof data === 'string') data = new TextEncoder().encode(data);
+  for (let i = 0; i < data.length; i += chunk) {
+    const slice = data.slice(i, i + chunk);
+    if ('writeValueWithoutResponse' in rxChar) {
+      await rxChar.writeValueWithoutResponse(slice);
+    } else {
+      await rxChar.writeValue(slice);
+    }
+    await new Promise(r => setTimeout(r, pause));
+  }
+}
+async function sendLine(s) {
+  if (!connected) return log('Chưa kết nối.');
+  if (!s.endsWith('\n')) s += '\n';
+  await writeBLE(s);
+}
+
+/* ====== Lệnh nhanh ====== */
+async function doPing(){ await sendLine('PING'); }
+async function doLs(){ await sendLine('LS'); }
+async function doReset(){ await sendLine('reset'); }
+
+/* ====== Upload: PUT / DATA / DONE (ACK tuỳ chọn) ====== */
+function waitAckOnce(timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    pendingAckResolve = resolve;
+    setTimeout(() => {
+      if (pendingAckResolve) { pendingAckResolve = null; reject(new Error('ACK timeout')); }
+    }, timeoutMs);
+  });
+}
+function waitSaved(timeoutMs = 10000) {
+  return new Promise((resolve, reject) => {
+    pendingSavedResolve = (ok) => ok ? resolve(true) : reject(new Error('Device ERR / not saved'));
+    setTimeout(() => {
+      if (pendingSavedResolve) { pendingSavedResolve = null; reject(new Error('No OK SAVED')); }
+    }, timeoutMs);
+  });
+}
+
+async function doUpload() {
+  try {
+    if (!connected) return log('Chưa kết nối.');
+    const f = $('#fsel').files[0];
+    if (!f) return log('Chọn file trước.');
+    const target = ($('#fname').value || 'main.py').trim();
+    const chunkSz = Math.max(64, Math.min(1024, parseInt($('#chunk').value || '256', 10)));
+    const waitAck = $('#waitAck').checked;
+    const autoReset = $('#autoReset').checked;
+
+    // Đọc toàn bộ file vào Uint8Array (an toàn với vài trăm KB)
+    const buf = new Uint8Array(await f.arrayBuffer());
+    log(`⬆️ Upload ${f.name} → ${target} (${buf.length} bytes)`);
+    setBar(0);
+
+    // PUT
+    await sendLine(`PUT ${target} ${buf.length}`);
+    await new Promise(r => setTimeout(r, 200));
+
+    // DATA từng khối (mã hóa base64 theo từng chunk gốc)
+    for (let off = 0; off < buf.length; off += chunkSz) {
+      const part = buf.subarray(off, off + chunkSz);
+      // base64: chuyển nhanh Uint8Array -> string -> btoa
+      let s = ''; for (let j = 0; j < part.length; j++) s += String.fromCharCode(part[j]);
+      const b64 = btoa(s);
+      await sendLine('DATA ' + b64);
+
+      if (waitAck) {
+        try { await waitAckOnce(5000); }
+        catch (e) { log('⚠️  Hết thời gian chờ ACK (tiếp tục).'); }
+      }
+
+      setBar(((off + part.length) / buf.length) * 100);
+      await new Promise(r => setTimeout(r, 4));
+    }
+
+    await sendLine('DONE');
+    log('📝 Đã gửi DONE — chờ "OK SAVED"...');
+    try { await waitSaved(10000); log('✅ OK SAVED'); }
+    catch (e) { log('⚠️  ' + e.message); }
+
+    if (autoReset) {
+      await new Promise(r => setTimeout(r, 300));
+      await doReset();
+    }
+  } catch (e) {
+    log('Upload lỗi:', e);
+  }
+}
+
+/* ====== Bind UI ====== */
+$('#btnConnect').onclick = connect;
+$('#btnDisconnect').onclick = () => { if (device && device.gatt.connected) device.gatt.disconnect(); };
+$('#btnPing').onclick = doPing;
+$('#btnLs').onclick = doLs;
+$('#btnReset').onclick = doReset;
+$('#btnUpload').onclick = doUpload;
+</script>
+</body>
+</html>
