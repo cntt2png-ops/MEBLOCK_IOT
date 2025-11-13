@@ -1,11 +1,7 @@
-
-# hello_app.py
+# main.py
 import time
-def run():
-    i = 0
-    while True:
-        print("Hello from BLE app:", i)
-        i += 1
-        time.sleep(1)
-if __name__ == "__main__":
-    run()
+i = 0
+while True:
+    print("Hello from main :", i)
+    i += 1
+    time.sleep(1000/1000)  # ngủ 1s (dễ dừng êm bởi shim)

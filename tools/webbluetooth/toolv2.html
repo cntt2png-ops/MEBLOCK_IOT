@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebBluetooth MicroPython BLE REPL Tool</title>
+  <style>
+    :root{
+      --bg:#0b0e14; --panel:#121826; --muted:#94a3b8; --text:#e2e8f0; --brand:#4f46e5; --ok:#10b981; --warn:#f59e0b; --err:#ef4444;
+      --radius:16px; --shadow:0 8px 30px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(120deg,#0b0e14,#10131b);color:var(--text);font:14px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:18px 22px;position:sticky;top:0;background:rgba(11,14,20,.7);backdrop-filter:blur(6px);border-bottom:1px solid #1f2937}
+    header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.2px}
+    .badge{font-size:11px;color:#9ca3af;border:1px solid #374151;padding:2px 8px;border-radius:999px}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px 60px}
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:16px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid #1f2937;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .sec{padding:16px}
+    .sec h2{margin:0 0 12px;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input[type=text]{width:100%;background:#0f1422;color:var(--text);border:1px solid #263041;border-radius:12px;padding:10px 12px;outline:none}
+    input[type=file]{width:100%}
+    textarea{width:100%;height:300px;resize:vertical;background:#0f1422;border:1px solid #263041;border-radius:12px;color:var(--text);padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{appearance:none;border:1px solid #2a3550;background:#192038;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+    button.primary{background:var(--brand);border-color:transparent}
+    button.good{background:#0b2d24;border-color:#0b2d24;color:#a7f3d0}
+    button.warn{background:#2b2410;border-color:#2b2410;color:#fde68a}
+    button.danger{background:#2b1618;border-color:#2b1618;color:#fecaca}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .tiny{font-size:12px;color:var(--muted)}
+    .log{background:#0a0f1a;border-top:1px solid #1f2937;border-radius:0 0 var(--radius) var(--radius);max-height:420px;overflow:auto;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap}
+    .status{display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#6b7280}
+    .dot.ok{background:var(--ok)}
+    .dot.bad{background:var(--err)}
+    .kbr{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#111827;border:1px solid #293142;border-radius:8px;padding:2px 6px}
+    .hl{color:#a5b4fc}
+    .notice{margin-top:10px;color:#cbd5e1}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>WebBluetooth MicroPython BLE REPL</h1>
+      <span class="badge">NUS • raw REPL • flash</span>
+    </div>
+    <div class="status"><span id="connDot" class="dot"></span><span id="connLabel">Disconnected</span></div>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="sec grid">
+        <div>
+          <h2>Device</h2>
+          <label>Prefix</label>
+          <input id="namePrefix" type="text" value="MEBLOCK-TOPKID" />
+          <div class="row" style="margin-top:10px">
+            <button id="btnConnect" class="primary">Connect</button>
+            <button id="btnDisconnect">Disconnect</button>
+          </div>
+          <div class="notice tiny">Requires a secure context (HTTPS) or <span class="kbr">localhost</span>. Use a Chromium browser with Web Bluetooth enabled.</div>
+          <hr style="border:0;border-top:1px solid #1f2937;margin:14px 0">
+          <h2>Flash (write to FS)</h2>
+          <label>Choose .py file</label>
+          <input id="fileInput" type="file" accept=".py" />
+          <label>Destination filename on device</label>
+          <input id="dstName" type="text" value="main.py" />
+          <div class="row" style="margin-top:10px">
+            <button id="btnFlash" class="good">Flash to device</button>
+            <span class="tiny">Writes chunks via base64; no reset.</span>
+          </div>
+        </div>
+        <div>
+          <h2>Run (raw REPL)</h2>
+          <label>Choose .py file to run (no flash)</label>
+          <input id="runFileInput" type="file" accept=".py" />
+          <div class="row" style="margin-top:10px">
+            <button id="btnRunFile" class="primary">Run file (no flash)</button>
+            <button id="btnStop" class="warn">Stop (CTRL-C)</button>
+            <button id="btnReset" class="danger">machine.reset()</button>
+            <label class="tiny"><input type="checkbox" id="autoScroll" checked style="vertical-align:middle;margin-right:6px"> Auto-scroll</label>
+          </div>
+        </div>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+  // ===== Constants (Nordic UART Service - NUS) =====
+  const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // write
+  const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // notify
+
+  // ===== UI helpers =====
+  const $ = sel => document.querySelector(sel);
+  const logEl = $('#log');
+  const autoScrollEl = $('#autoScroll');
+  function log(txt, cls) {
+    const t = document.createElement('div');
+    t.textContent = txt;
+    if (cls) t.style.color = cls;
+    logEl.appendChild(t);
+    if (autoScrollEl.checked) logEl.scrollTop = logEl.scrollHeight;
+  }
+  function setConn(connected, name) {
+    const dot = $('#connDot');
+    dot.classList.toggle('ok', connected);
+    dot.classList.toggle('bad', !connected);
+    $('#connLabel').textContent = connected ? `Connected${name? ' • '+name : ''}` : 'Disconnected';
+    $('#btnConnect').disabled = connected;
+    $('#btnDisconnect').disabled = !connected;
+    $('#btnRunFile').disabled = !connected;
+    $('#btnStop').disabled = !connected;
+    $('#btnFlash').disabled = !connected;
+    $('#btnReset').disabled = !connected;
+  }
+
+  // ===== BLE State =====
+  let device, server, service, chrRX, chrTX;
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+  let writeQueue = Promise.resolve();
+
+  // 20-byte chunked write, serialize via writeQueue
+  function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+  function sendBytes(bytes) {
+    writeQueue = writeQueue.then(async () => {
+      for (let i=0; i<bytes.length; i+=20) {
+        const slice = bytes.slice(i, i+20);
+        await chrRX.writeValueWithoutResponse(slice);
+        // Gentle pacing to avoid overrun on some stacks
+        await sleep(3);
+      }
+    }).catch(e => log(`[WRITE ERR] ${e}`, '#fca5a5'));
+    return writeQueue;
+  }
+  function sendText(s){ return sendBytes(enc.encode(s)); }
+  function ctrlA(){ return sendBytes(Uint8Array.of(0x01)); }
+  function ctrlB(){ return sendBytes(Uint8Array.of(0x02)); }
+  function ctrlC(){ return sendBytes(Uint8Array.of(0x03)); }
+  function ctrlD(){ return sendBytes(Uint8Array.of(0x04)); }
+
+  async function enterRaw(){
+    await ctrlC(); await sleep(50);
+    await ctrlA(); await sleep(120);
+  }
+
+  async function rawExec(pyCode){
+    // Send a short snippet and execute (CTRL-D)
+    await sendText(pyCode);
+    await ctrlD();
+  }
+
+  // Base64 utils (no external libs)
+  function base64FromBytes(bytes){
+    let binary = '';
+    const chunk = 0x8000; // 32KB chunks to avoid stack issues
+    for (let i=0; i<bytes.length; i+=chunk){
+      const sub = bytes.subarray(i, i+chunk);
+      binary += String.fromCharCode.apply(null, sub);
+    }
+    return btoa(binary);
+  }
+  function pyQuote(s){
+    return '\'' + s.replace(/\\/g,'\\\\').replace(/'/g, "\\'") + '\'';
+  }
+
+  async function connect(){
+    try{
+      const prefix = $('#namePrefix').value.trim();
+      log(`Scanning for '${prefix}*'...`, '#a5b4fc');
+      device = await navigator.bluetooth.requestDevice({
+        filters: prefix ? [{ namePrefix: prefix }] : undefined,
+        acceptAllDevices: !prefix,
+        optionalServices: [NUS_SERVICE]
+      });
+      log(`Device chosen: ${device.name || '(no name)'} ${device.id}`);
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      server = await device.gatt.connect();
+      service = await server.getPrimaryService(NUS_SERVICE);
+      chrRX = await service.getCharacteristic(NUS_RX);
+      chrTX = await service.getCharacteristic(NUS_TX);
+      await chrTX.startNotifications();
+      chrTX.addEventListener('characteristicvaluechanged', ev => {
+        const v = ev.target.value;
+        log(dec.decode(v));
+      });
+      setConn(true, device.name);
+      log('Connected. Ready.');
+    }catch(err){
+      log(`[CONNECT ERROR] ${err}`, '#fca5a5');
+      setConn(false);
+    }
+  }
+
+  async function disconnect(){
+    try{
+      if (chrTX) { try{ await chrTX.stopNotifications(); }catch(_){} }
+      if (device?.gatt?.connected) device.gatt.disconnect();
+    }catch(e){ log(`[DISCONNECT ERR] ${e}`, '#fca5a5'); }
+    setConn(false);
+  }
+  function onDisconnected(){
+    log('Disconnected.');
+    setConn(false);
+  }
+
+  async function runCurrent(){
+    if (!chrRX) return;
+    const code = $('#codeArea').value; 
+    log('--- RUN (raw REPL) ---', '#a5b4fc');
+    await enterRaw();
+    await sendText(code);
+    await ctrlD();
+  }
+
+  async function stopCurrent(){
+    if (!chrRX) return;
+    log('[CTRL-C] stopping current program...','#fde68a');
+    await ctrlC();
+  }
+
+  async function resetBoard(){
+    if (!chrRX) return;
+    log('[machine.reset()]', '#fecaca');
+    await enterRaw();
+    await rawExec('import machine\nmachine.reset()\n');
+  }
+
+  async function flashSelected(){
+    if (!chrRX) return;
+    const fi = $('#fileInput');
+    if (!fi.files || fi.files.length===0){ log('Pick a .py file first.', '#fca5a5'); return; }
+    const dst = ($('#dstName').value || 'main.py').trim();
+    const file = fi.files[0];
+    const ab = await file.arrayBuffer();
+    const bytes = new Uint8Array(ab);
+
+    log(`--- FLASH ${file.name} -> ${dst} (${bytes.length} bytes) ---`, '#34d399');
+    await enterRaw();
+
+    const init = 'import ubinascii, os\n' +
+                 'def __fw(p,b64,m):\n' +
+                 '    f=open(p,m)\n' +
+                 '    f.write(ubinascii.a2b_base64(b64))\n' +
+                 '    f.close()\n';
+    await rawExec(init);
+
+    const chunkSize = 768; // data bytes per chunk
+    let written = 0, idx = 0;
+    while (written < bytes.length){
+      const part = bytes.subarray(written, written+chunkSize);
+      const b64 = base64FromBytes(part);
+      const mode = (written===0) ? 'wb' : 'ab';
+      const stmt = `__fw(${pyQuote(dst)}, ${pyQuote(b64)}, ${pyQuote(mode)})\n`;
+      await rawExec(stmt);
+      written += part.length; idx += 1;
+      log(`  - chunk ${idx}: +${part.length} (${written}/${bytes.length})`);
+      await sleep(10);
+    }
+    await rawExec('import os\ntry:\n    os.sync()\nexcept Exception:\n    pass\nprint("[FLASH_DONE]")\n');
+    log('[Flashed] Done. You may reset the board to autorun main.py.', '#34d399');
+  }
+
+  // New: run selected file (no flash)
+  async function runSelected(){
+    if (!chrRX) return;
+    const fi = $('#runFileInput');
+    if (!fi.files || fi.files.length===0){ log('Pick a .py file first.', '#fca5a5'); return; }
+    const file = fi.files[0];
+    const text = await file.text();
+    log(`--- RUN FILE ${file.name} (${text.length} bytes) ---`, '#a5b4fc');
+    await enterRaw();
+    await sendText(text);
+    await ctrlD();
+  }
+
+  // ===== Bind UI =====
+  $('#btnConnect').addEventListener('click', connect);
+  $('#btnDisconnect').addEventListener('click', disconnect);
+  $('#btnRunFile').addEventListener('click', runSelected);
+  $('#btnStop').addEventListener('click', stopCurrent);
+  $('#btnReset').addEventListener('click', resetBoard);
+  $('#btnFlash').addEventListener('click', flashSelected);
+
+  setConn(false);
+  </script>
+</body>
+</html>
