@@ -1,7 +1,7 @@
 # oled.py — OLED (SSD1306 / SH1106) cho MicroPython (ESP32/ESP32-S3)
-# Dựa trên cùng triết lý driver:
+# Dựa trên cùngdriver:
 #  - SSD1306: chuẩn
-#  - SH1106: bổ sung (vì phổ biến hơn SSD1306 ở VN)
+#  - SH1106: bổ sung (vì phổ biến hơn SSD1306)
 #
 # API:
 #   dev = create(..., ctrl="SSD1306"|"SH1106", sh1106_col_offset=2, ...)

@@ -1,9 +1,9 @@
 # aiot_dht.py
-# Hỗ trợ DHT20/AHT20 (I2C) và DHT11 (1-wire) cho MicroPython (ESP32/ESP32-S3)
-# - Mặc định DHT20 dùng SoftI2C (ổn định, không cảnh báo deprecated)
-# - Preset chân I2C theo board: "wroom" (SDA=21,SCL=22), "s3" (SDA=8,SCL=9)
+# Hỗ trợ DHT20/AHT20 (I2C) và DHT11/22 (1-wire) cho MicroPython (ESP32/ESP32-S3)
+
+# - Preset chân I2C theo board
 # - API chung: read(), temperature(), humidity(), status()
-# - Shim tương thích: read_dht20()/dht20_temperature()/... và tương tự cho DHT11
+# - Tương thích: read_dht20()/dht20_temperature()/... cho cả 1wire & i2c dht
 
 import time
 from machine import Pin, I2C
@@ -13,16 +13,16 @@ try:
 except ImportError:
     _SoftI2C = None
 
-# DHT11: dùng module tích hợp của MicroPython (khuyến nghị)
+# DHT11/22: dùng module tích hợp của MicroPython
 try:
     from dht import DHT11 as _DHT11
 except ImportError:
-    _DHT11 = None  # Nếu None, sẽ báo lỗi rõ khi khởi tạo DHT11
+    _DHT11 = None 
 
-# -------- Preset chân theo board (cho I2C / DHT20) --------
+# -------- Preset chân theo board --------
 BOARD_PRESETS = {
     "wroom": {"sda": 21, "scl": 22},  # ESP32-WROOM DevKit
-    "s3":    {"sda": 8,  "scl": 9},   # ESP32-S3 DevKitC-1
+    "C1":    {"sda": 8,  "scl": 9},   # ESP32-S3 DevKitC-1
 }
 
 # =========================
