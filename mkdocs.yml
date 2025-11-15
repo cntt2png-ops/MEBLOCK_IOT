@@ -1,0 +1,52 @@
+site_name: MEBLOCK IOT | MicroPython API
+site_description: Tài liệu thư viện thiết bị ESP32 MicroPython (MQTT, OLED, DHT, Ultrasonic)
+
+theme:
+  name: material
+  language: vi
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: sig
+          class: api-signature
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums_style: table
+  - pymdownx.inlinehilite
+  - pymdownx.mark
+  - toc:
+      permalink: true
+
+extra_css:
+  - styles/api.css
+
+nav:
+  - "1. MicroPython API": index.md
+  - "Modules":
+      - "mqtt — MQTT Helper": api/mqtt.md
+      - "oled — OLED I2C Module": api/oled.md
+      - "dht — DHT Sensors": api/dht.md
+      - "ultrasonic — HC-SR04": api/ultrasonic.md
+  - "Hướng dẫn":
+      - "Xử lý lỗi": guides/troubleshooting.md
