@@ -11,8 +11,8 @@ except NameError:
 _MAX_DISTANCE_CM = const(200)
 
 # DevKitC-1 preset - chosen pins for other pins in parameters 
-S3_US_TRIG = 2
-S3_US_ECHO = 3
+S3_US_TRIG = 1
+S3_US_ECHO = 2
 
 
 class HCSR04:

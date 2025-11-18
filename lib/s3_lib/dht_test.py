@@ -1,7 +1,7 @@
 import time
-from aiot_dht import DHT20, DHT11
+from aiot_dht import DHT
 
-d1= DHT11(pin=4)
+d1= DHT()
 
 while True:
     print(d1.temperature(), d1.humidity())
