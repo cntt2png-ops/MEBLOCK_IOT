@@ -1,6 +1,6 @@
 from oled import Oled
 import time
-oled = Oled(width=128, height=64)
+oled = Oled(scl=5, sda=4, width=128, height=64)
 
 oled.clear()
 oled.dev.text("Hello, S3!", 0, 0, 1)

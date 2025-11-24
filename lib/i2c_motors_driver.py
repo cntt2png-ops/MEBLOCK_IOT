@@ -1,6 +1,7 @@
-from machine import SoftI2C, Pin
+from machine import I2C, Pin
 from time import sleep
 from struct import pack
+from micropython import const
 
 # Địa chỉ I2C mặc định của module driver 4 motor
 MD4C_DEFAULT_I2C_ADDRESS = 0x30
@@ -28,10 +29,16 @@ STEPPER_MODE_STEP = const(1)
 DC_MOTOR_MAX_SPEED = 100
 STEPPER_MOTOR_MAX_SPEED = 255
 
+# ESP32-S3 DevKitC-1 I2C preset
+S3_I2C0_SDA = 8
+S3_I2C0_SCL = 9
+S3_I2C1_SDA = 10
+S3_I2C1_SCL = 11
+
 
 class _MD4CBase:
     """
-    Base class dùng chung I2C ảo cho driver MD4C.
+    Base class dùng chung HARD I2C cho driver MD4C.
     """
 
     def __init__(
@@ -41,20 +48,33 @@ class _MD4CBase:
         sda_pin=None,
         freq=100_000,
         i2c=None,
+        i2c_id=0,
     ):
         """
         address : địa chỉ I2C của driver
-        scl_pin : số GPIO SCL (bắt buộc nếu không truyền i2c)
-        sda_pin : số GPIO SDA (bắt buộc nếu không truyền i2c)
+        scl_pin : số GPIO SCL (tuỳ chọn, nếu None -> auto)
+        sda_pin : số GPIO SDA (tuỳ chọn, nếu None -> auto)
         freq    : tần số I2C (Hz)
-        i2c     : có thể truyền sẵn 1 đối tượng SoftI2C để dùng chung
+        i2c     : có thể truyền sẵn 1 đối tượng I2C/SoftI2C để dùng chung
+        i2c_id  : ID bus I2C (0 hoặc 1)
         """
         if i2c is not None:
             self._i2c = i2c
         else:
+            # auto chọn chân nếu không truyền
             if scl_pin is None or sda_pin is None:
-                raise ValueError("Phải truyền scl_pin và sda_pin khi không dùng i2c sẵn.")
-            self._i2c = SoftI2C(
+                if i2c_id == 0:
+                    sda_pin = S3_I2C0_SDA
+                    scl_pin = S3_I2C0_SCL
+                elif i2c_id == 1:
+                    sda_pin = S3_I2C1_SDA
+                    scl_pin = S3_I2C1_SCL
+                else:
+                    sda_pin = S3_I2C0_SDA
+                    scl_pin = S3_I2C0_SCL
+
+            self._i2c = I2C(
+                i2c_id,
                 scl=Pin(scl_pin),
                 sda=Pin(sda_pin),
                 freq=freq,
@@ -75,13 +95,18 @@ class DCMotorV1(_MD4CBase):
     """
 
     def __init__(self, address=MD4C_DEFAULT_I2C_ADDRESS,
-                 scl_pin=None, sda_pin=None, freq=100_000, i2c=None):
-        super().__init__(address=address, scl_pin=scl_pin, sda_pin=sda_pin, freq=freq, i2c=i2c)
+                 scl_pin=None, sda_pin=None, freq=100_000, i2c=None, i2c_id=0):
+        super().__init__(
+            address=address,
+            scl_pin=scl_pin,
+            sda_pin=sda_pin,
+            freq=freq,
+            i2c=i2c,
+            i2c_id=i2c_id,
+        )
         self._motor_type = 0x00  # type 0x00 cho DC motor
 
-        # TODO: nếu sau này có lệnh WHO_AM_I thì đọc ở đây
         who_am_i = MD4C_DEFAULT_I2C_ADDRESS
-
         if who_am_i != MD4C_DEFAULT_I2C_ADDRESS:
             print(who_am_i)
             raise RuntimeError(
@@ -94,6 +119,9 @@ class DCMotorV1(_MD4CBase):
             self.setSpeed(MD4C_REG_CH3, 0)
             self.setSpeed(MD4C_REG_CH4, 0)
             print("DC Motor 4 channel driver initialized")
+
+    # --- phần còn lại của DCMotorV1 giữ nguyên ---
+
 
     def setSpeed(self, motor_index, speed):
         """
@@ -193,8 +221,16 @@ class StepperMotor(_MD4CBase):
         sda_pin=None,
         freq=100_000,
         i2c=None,
+        i2c_id=0,
     ):
-        super().__init__(address=address, scl_pin=scl_pin, sda_pin=sda_pin, freq=freq, i2c=i2c)
+        super().__init__(
+            address=address,
+            scl_pin=scl_pin,
+            sda_pin=sda_pin,
+            freq=freq,
+            i2c=i2c,
+            i2c_id=i2c_id,
+        )
         self._motor_type = 0x01  # type 0x01 cho stepper
         self._number_step = number_step
 
@@ -205,10 +241,12 @@ class StepperMotor(_MD4CBase):
                 "Could not find motor driver at address 0x{:X}".format(address)
             )
         else:
-            # Khởi tạo: set speed = 0 cho CH1, CH2
             self.setSpeed(MD4C_REG_CH1, DIR_FORWARD, 0)
             self.setSpeed(MD4C_REG_CH2, DIR_FORWARD, 0)
             print("Stepper Motor 2 channel driver initialized")
+
+    # các hàm setSpeed, step, onestep, release giữ nguyên
+
 
     def setSpeed(self, motor_index, direction, speed, style=STEPPER_STYLE_INTERLEAVE):
         """

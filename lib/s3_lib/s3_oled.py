@@ -1,18 +1,21 @@
-# oled.py – Especially for ESP32-S3 DevKitC-1 (preset)
+# oled.py – Especially for ESP32-S3 DevKitC-1 (preset, HARD I2C only)
 
 from machine import Pin, I2C
-try:
-    from machine import SoftI2C as _SoftI2C
-except ImportError:
-    _SoftI2C = None
-
 import framebuf
 
 # ===== PRESET S3 DEVKIT C1 =====
-S3_I2C_SDA = 8
-S3_I2C_SCL = 9
+# Định nghĩa 2 bus cứng:
+#   - I2C0: SDA=8,  SCL=9
+#   - I2C1: SDA=10, SCL=11
+S3_I2C0_SDA = 8
+S3_I2C0_SCL = 9
+S3_I2C1_SDA = 10
+S3_I2C1_SCL = 11
 
-# ... (phần driver SSD1306_I2C & SH1106_I2C giống bản trước, mình không lặp lại ở đây) ...
+# Giữ alias cũ cho tương thích (mặc định bus 0)
+S3_I2C_SDA = S3_I2C0_SDA
+S3_I2C_SCL = S3_I2C0_SCL
+
 # -------------------- Drivers --------------------
 
 # ---- SSD1306 ----
@@ -158,22 +161,34 @@ class SH1106_I2C:
             self._cmd(0x00)   # low nibble
             self._data(self._line)
 
-def _make_i2c(i2c, backend, i2c_id, sda, scl, freq):
+
+# ===== HARD I2C ONLY, 2 BUS (8/9 và 10/11) =====
+def _make_i2c(i2c, i2c_id, sda, scl, freq):
+    """
+    Luôn dùng hardware I2C.
+    - Nếu i2c != None → dùng lại object đó.
+    - Nếu không:
+        + Nếu sda/scl None → chọn theo i2c_id:
+            i2c_id = 0 → SDA=8,  SCL=9
+            i2c_id = 1 → SDA=10, SCL=11
+        + Nếu sda/scl được truyền → dùng đúng như vậy.
+    """
     if i2c:
         return i2c
-    be = (backend or "soft").lower()
-    if be == "auto":
-        use_soft = (_SoftI2C is not None)
-    elif be == "soft":
-        if _SoftI2C is None:
-            raise RuntimeError("Firmware is not SoftI2C Supportted")
-        use_soft = True
-    elif be == "hard":
-        use_soft = False
-    else:
-        raise ValueError('backend must be "soft" | "hard" | "auto"')
-    if use_soft:
-        return _SoftI2C(scl=Pin(scl), sda=Pin(sda), freq=freq)
+
+    # Auto chọn chân theo bus nếu chưa được truyền
+    if sda is None or scl is None:
+        if i2c_id == 0:
+            sda = S3_I2C0_SDA
+            scl = S3_I2C0_SCL
+        elif i2c_id == 1:
+            sda = S3_I2C1_SDA
+            scl = S3_I2C1_SCL
+        else:
+            # fallback: bus 0
+            sda = S3_I2C0_SDA
+            scl = S3_I2C0_SCL
+
     return I2C(i2c_id, scl=Pin(scl), sda=Pin(sda), freq=freq)
 
 
@@ -190,13 +205,18 @@ def create(*,
            i2c=None, i2c_id=0, sda=None, scl=None, freq=400_000,
            width=128, height=64,
            ctrl="SSD1306", sh1106_col_offset=2,
-           addr=None, backend="soft",
+           addr=None, backend="hard",
            debug=False):
-    # nếu không truyền -> dùng preset S3
-    _sda = sda if sda is not None else S3_I2C_SDA
-    _scl = scl if scl is not None else S3_I2C_SCL
+    """
+    Tạo đối tượng OLED:
+    - Luôn dùng HARD I2C, backend giữ lại cho tương thích nhưng bị bỏ qua.
+    - i2c_id = 0 → SDA=8, SCL=9 (nếu không truyền sda/scl)
+    - i2c_id = 1 → SDA=10, SCL=11 (nếu không truyền sda/scl)
+    """
+    _sda = sda
+    _scl = scl
 
-    i2c_obj = _make_i2c(i2c, backend, i2c_id, _sda, _scl, freq)
+    i2c_obj = _make_i2c(i2c, i2c_id, _sda, _scl, freq)
     a = _auto_addr(i2c_obj, addr)
     ctrl_up = (ctrl or "SSD1306").upper()
     if ctrl_up == "SSD1306":
@@ -218,16 +238,30 @@ class Oled:
                  sda=None, scl=None,
                  driver="SSD1306",
                  addr=None,
-                 backend="soft", i2c_id=0, freq=400_000,
+                 backend="hard",  # giữ tham số nhưng không còn dùng soft
+                 i2c_id=0, freq=400_000,
                  sh1106_offset=2,
                  debug=False):
+        """
+        Oled high-level wrapper.
+
+        Ví dụ:
+            # Bus 0: SDA=8, SCL=9
+            oled0 = Oled()
+
+            # Bus 1: SDA=10, SCL=11
+            oled1 = Oled(i2c_id=1)
+
+            # Dùng chân custom nhưng vẫn là HARD I2C:
+            oled_custom = Oled(sda=4, scl=5)
+        """
         self.width, self.height = width, height
         self.dev = create(
             i2c=None, i2c_id=i2c_id,
             sda=sda, scl=scl, freq=freq,
             width=width, height=height,
             ctrl=driver, sh1106_col_offset=sh1106_offset,
-            addr=addr, backend=backend, debug=debug
+            addr=addr, backend="hard", debug=debug
         )
 
     def clear(self): self.dev.clear()

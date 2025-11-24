@@ -12,6 +12,7 @@ time.sleep(2)
 dc.setSpeed(MD4C_REG_CH3, 75)           # motor CH1 chạy forward 50%
 time.sleep(2)
 dc.setSpeed(MD4C_REG_CH4, 100)           # motor CH1 chạy forward 50%
+dc.fullOff(MD4C_REG_CH1)
 time.sleep(5)
 
 dc.setSpeed(MD4C_REG_CH3, 0)
