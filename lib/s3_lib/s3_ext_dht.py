@@ -1,11 +1,14 @@
-# dht.py – Especially for ESP32-S3 DevKitC-1 (HARD I2C only)
+# aiot_dht.py – DHT20 (I2C) + DHT11 (builtin dht) cho ESP32-S3
 
 import time
 from machine import Pin, I2C
 
+# Thử lấy DHT11 từ module builtin "dht"
 try:
-    from dht import DHT11 as _DHT11
+    import dht as _builtin_dht
+    _DHT11 = _builtin_dht.DHT11
 except ImportError:
+    _builtin_dht = None
     _DHT11 = None
 
 # ===== PRESET CHÂN S3 DEVKIT C1 =====
@@ -152,10 +155,20 @@ class _DHT20Driver:
 
 class _DHT11Driver:
     def __init__(self, *, pin=None):
+        # DHT11 dùng module builtin dht.DHT11 nếu có
         if _DHT11 is None:
-            raise ImportError("cannot find module 'dht'in this firmware")
+            raise ImportError("firmware khong co module 'dht' (DHT11)")
+
         _pin = pin if pin is not None else S3_DHT11_PIN
-        self._sensor = _DHT11(Pin(_pin))
+
+        # Một số port MicroPython cần DHT11(Pin(pin)),
+        # một số port (hoặc .mpy custom) lại muốn DHT11(pin)
+        try:
+            self._sensor = _DHT11(Pin(_pin))
+        except TypeError:
+            # Thử lại với kiểu int pin
+            self._sensor = _DHT11(_pin)
+
         self._t = None
         self._h = None
         self._last_ok = False

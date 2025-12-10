@@ -1,71 +1,168 @@
 /*
- * serial_mpy_repl.js — v2 (non‑blocking connect)
+ * serial_mpy_repl.js — v2 (non-blocking connect)
  * Web Serial helper for MicroPython raw REPL over COM/TTY
  *
  * Features
  *  - Connect via Web Serial (Windows COM / Linux & macOS tty)
  *  - Stream logs (onLog)
- *  - Run code (raw REPL: CTRL‑C → CTRL‑A → send → CTRL‑D)
+ *  - Run code (raw REPL: CTRL-C → CTRL-A → send → CTRL-D)
  *  - Run local .py (no flash)
  *  - Flash .py to filesystem (dst = main.py default)
- *  - Stop (CTRL‑C), Reset (machine.reset())
+ *  - Stop (CTRL-C), Reset (machine.reset())
  *
  * Notes
- *  - connect() is NON‑BLOCKING now (read loop runs in background)
- *  - Requires Chromium‑based browser, served over HTTPS or localhost
+ *  - connect() is NON-BLOCKING now (read loop runs in background)
+ *  - Requires Chromium-based browser, served over HTTPS or localhost
  */
 
 export class SerialMicroPythonREPL {
-  constructor({ onLog, onStatus, paceMs = 0 } = {}) {
+  constructor({
+    onLog = (text) => console.log(text),
+    onStatus = (ok) => console.log('status:', ok),
+    paceMs = 0,           // thêm delay nhẹ giữa các chunk gửi
+    vid = null,
+    pid = null,
+  } = {}) {
+    this.onLog = onLog;
+    this.onStatus = onStatus;
+    this.paceMs = paceMs;
+    this.vid = vid;
+    this.pid = pid;
+
     this.port = null;
     this.reader = null;
     this.writer = null;
-    this.connected = false;
-
-    this.paceMs = paceMs; // optional throttle per write slice
-
-    this.onLog = typeof onLog === 'function' ? onLog : () => {};
-    this.onStatus = typeof onStatus === 'function' ? onStatus : () => {};
-
     this.enc = new TextEncoder();
     this.dec = new TextDecoder();
-
-    this._writeQueue = Promise.resolve();
+    this.connected = false;
     this._readLoopAbort = null;
+    this._writeQueue = Promise.resolve();
   }
 
-  /* ===== utils ===== */
-  _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  /* ===== internal helpers ===== */
+  _logChunk(text) {
+    if (!text) return;
+    this.onLog(text);
+  }
+
   _requireConnected() {
-    if (!this.port || !this.writer || !this.connected) throw new Error('Not connected');
+    if (!this.connected || !this.port) throw new Error('Not connected');
+  }
+
+  async _sleep(ms) {
+    if (!ms || ms <= 0) return;
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async _startReadLoop() {
-    if (!this.port?.readable) return;
+    if (!this.port) return;
+    if (this.reader) {
+      try { await this._stopReadLoop(); } catch (e) {}
+    }
+
     this._readLoopAbort = new AbortController();
     const signal = this._readLoopAbort.signal;
-    this.reader = this.port.readable.getReader(); // Web Serial: no AbortSignal param
-    try {
-      while (!signal.aborted) {
-        const { value, done } = await this.reader.read();
-        if (done) break;
-        if (value) this.onLog(this.dec.decode(value));
+
+    const textDecoder = new TextDecoder();
+
+    const reader = this.port.readable.getReader();
+    this.reader = reader;
+
+    this.onLog('[ReadLoop] started.\n');
+
+    const pump = async () => {
+      try {
+        while (true) {
+          if (signal.aborted) break;
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) {
+            const text = textDecoder.decode(value);
+            this._logChunk(text);
+          }
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          this.onLog(`[ReadLoop] error: ${err}\n`);
+        }
+      } finally {
+        try { reader.releaseLock(); } catch (e) {}
+        if (this.reader === reader) this.reader = null;
+        this.onLog('[ReadLoop] stopped.\n');
       }
-    } catch (err) {
-      if (err?.name !== 'AbortError') this.onLog(`[READ ERROR] ${err}\n`);
-    } finally {
-      try { this.reader.releaseLock(); } catch {}
-      this.reader = null;
-    }
+    };
+
+    pump();
   }
 
   async _stopReadLoop() {
-    try { this._readLoopAbort?.abort(); } catch {}
-    try { await this.reader?.cancel(); } catch {}
+    if (!this.reader) return;
+    try {
+      this._readLoopAbort?.abort();
+    } catch (e) {}
     this._readLoopAbort = null;
+    try {
+      await this.reader.cancel();
+    } catch (e) {}
+    try {
+      this.reader.releaseLock();
+    } catch (e) {}
+    this.reader = null;
   }
 
-  async _sendBytes(bytes, { chunkSize = 512 } = {}) {
+  /* ===== connect / disconnect ===== */
+  async connect() {
+    if (!('serial' in navigator)) {
+      throw new Error('Web Serial API not available in this browser');
+    }
+
+    const filters = [];
+    if (this.vid != null && this.pid != null) {
+      filters.push({ usbVendorId: this.vid, usbProductId: this.pid });
+    }
+
+    const port = await navigator.serial.requestPort(
+      filters.length ? { filters } : {}
+    );
+    await port.open({ baudRate: 115200 });
+
+    this.port = port;
+    this.connected = true;
+
+    const writable = port.writable;
+    this.writer = writable.getWriter();
+
+    this.onStatus(true);
+    this.onLog('[Serial] Connected.\n');
+
+    await this._startReadLoop();
+  }
+
+  async disconnect() {
+    try { await this._stopReadLoop(); } catch (e) {}
+
+    try {
+      if (this.writer) await this.writer.close();
+    } catch (e) {}
+    try {
+      this.writer?.releaseLock();
+    } catch (e) {}
+    this.writer = null;
+
+    try {
+      if (this.port) await this.port.close();
+    } catch (e) {}
+
+    this.port = null;
+    this.connected = false;
+    this.onStatus(false);
+    this.onLog('[Serial] Disconnected.\n');
+  }
+
+  /* ===== sending bytes / text ===== */
+
+  // 🔧 ĐÃ SỬA: giảm chunkSize từ 512 xuống 128 cho an toàn, kết hợp với paceMs
+  async _sendBytes(bytes, { chunkSize = 128 } = {}) {
     this._requireConnected();
     const writer = this.writer;
     this._writeQueue = this._writeQueue.then(async () => {
@@ -84,71 +181,27 @@ export class SerialMicroPythonREPL {
   ctrlA() { return this._sendBytes(Uint8Array.of(0x01)); } // enter raw
   ctrlB() { return this._sendBytes(Uint8Array.of(0x02)); } // exit raw
   ctrlC() { return this._sendBytes(Uint8Array.of(0x03)); } // KeyboardInterrupt
-  ctrlD() { return this._sendBytes(Uint8Array.of(0x04)); } // soft EOF / exec
+  ctrlD() { return this._sendBytes(Uint8Array.of(0x04)); } // soft reboot / exec
+
+  /* ===== high-level REPL operations ===== */
 
   async enterRaw() {
-    await this.ctrlC(); await this._sleep(50);
-    await this.ctrlA(); await this._sleep(120);
+    this._requireConnected();
+    await this.ctrlC();
+    await this._sleep(40);
+    await this.ctrlA();
+    await this._sleep(40);
   }
 
-  async rawExec(pyCode) {
-    await this._sendText(pyCode);
-    await this.ctrlD();
-  }
-
-  /* ===== helpers ===== */
-  static base64FromBytes(bytes) {
-    let binary = '';
-    const step = 0x8000; // 32KB
-    for (let i = 0; i < bytes.length; i += step) {
-      const sub = bytes.subarray(i, i + step);
-      binary += String.fromCharCode.apply(null, sub);
-    }
-    return btoa(binary);
-  }
-  static pyQuote(s) { return '\'' + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\''; }
-
-  /* ===== connect / disconnect ===== */
-  async connect({ baudRate = 115200, parity = 'none', dataBits = 8, stopBits = 1 } = {}) {
-    if (!('serial' in navigator)) throw new Error('Web Serial API not supported');
-
-    // Select & open
-    this.port = await navigator.serial.requestPort();
-    await this.port.open({ baudRate, parity, dataBits, stopBits, flowControl: 'none' });
-
-    // Prepare writer
-    this.writer = this.port.writable.getWriter();
-
-    // Mark connected and notify UI immediately (non‑blocking)
-    this.connected = true;
-    this.onStatus(true);
-    this.onLog(`Connected @ ${baudRate} baud\n`);
-
-    // Start the read loop in background
-    this._startReadLoop().catch(e => this.onLog(`[READ LOOP ERROR] ${e}\n`));
-
-    return true;
-  }
-
-  async disconnect() {
-    try { await this._stopReadLoop(); } catch {}
-    try { if (this.writer) await this.writer.close(); } catch {}
-    try { this.writer?.releaseLock(); } catch {}
-    this.writer = null;
-    try { await this.port?.close(); } catch {}
-    this.port = null;
-    this.connected = false;
-    this.onStatus(false);
-    this.onLog('Disconnected.\n');
-  }
-
-  /* ===== high‑level actions ===== */
+  // 🔧 ĐÃ SỬA: sau khi chạy xong thì chờ 1 chút rồi thoát raw REPL (CTRL-B)
   async runCode(text, { label = 'inline' } = {}) {
     this._requireConnected();
     this.onLog(`--- RUN (${label}) ---\n`);
     await this.enterRaw();
     await this._sendText(text);
     await this.ctrlD();
+    await this._sleep(100);
+    await this.ctrlB();
   }
 
   async runFile(file) {
@@ -169,6 +222,25 @@ export class SerialMicroPythonREPL {
     await this.enterRaw();
     await this.rawExec('import machine\nmachine.reset()\n');
   }
+
+  async rawExec(pyCode) {
+    await this._sendText(pyCode);
+    await this.ctrlD();
+  }
+
+  /* ===== helpers ===== */
+  static base64FromBytes(bytes) {
+    let binary = '';
+    const step = 0x8000; // 32KB
+    for (let i = 0; i < bytes.length; i += step) {
+      const sub = bytes.subarray(i, i + step);
+      binary += String.fromCharCode.apply(null, sub);
+    }
+    return btoa(binary);
+  }
+  static pyQuote(s) { return '\'' + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\''; }
+
+  /* ===== flashing a file (like main.py) ===== */
 
   async flashFile(file, { dst = 'main.py', chunkSize = 1024, onProgress } = {}) {
     this._requireConnected();
@@ -200,7 +272,10 @@ export class SerialMicroPythonREPL {
       await this._sleep(10);
     }
 
+    // 🔧 ĐÃ SỬA: sau khi sync, chờ 1 chút rồi thoát raw REPL
     await this.rawExec('import os\ntry:\n    os.sync()\nexcept Exception:\n    pass\nprint("[FLASH_DONE]")\n');
+    await this._sleep(100);
+    await this.ctrlB();
     this.onLog('[Flashed] Done.\n');
   }
 }

@@ -60,6 +60,16 @@
           </div>
           <div class="tiny">Windows: COMx • Linux/macOS: /dev/tty*</div>
 
+          <!-- 🔹 ĐỔI TÊN THIẾT BỊ -->
+          <hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
+          <h2>Đổi tên BLE (MEBLOCK-...)</h2>
+          <label>Suffix mới (phần sau <code>MEBLOCK-</code>)</label>
+          <input id="nameSuffix" type="text" placeholder="VD: R1-01" />
+          <div class="row" style="margin-top:10px">
+            <button id="btnSetName" class="good">Set name & reset</button>
+            <span class="tiny">Gửi: <code>setting.set_device_suffix(...); machine.reset()</code></span>
+          </div>
+
           <hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
 
           <h2>Flash (ghi vào flash)</h2>
@@ -80,7 +90,7 @@
             <button id="btnRunFile" class="primary">Run file (no flash)</button>
             <button id="btnStop" class="warn">Stop (CTRL-C)</button>
             <button id="btnReset" class="danger">machine.reset()</button>
-            <label class="tiny"><input type="checkbox" id="autoScroll" checked style="vertical-align:middle;margin-right:6px"> Auto‑scroll log</label>
+            <label class="tiny"><input type="checkbox" id="autoScroll" checked style="vertical-align:middle;margin-right:6px"> Auto-scroll log</label>
             <button id="btnClear" class="tiny" style="margin-left:auto">Clear log</button>
           </div>
         </div>
@@ -114,6 +124,7 @@
       $('#btnStop').disabled = !connected;
       $('#btnFlash').disabled = !connected;
       $('#btnReset').disabled = !connected;
+      $('#btnSetName').disabled = !connected;   // 🔹 khóa nút rename khi chưa connect
     }
 
     if (!window.isSecureContext && location.hostname !== 'localhost') {
@@ -126,13 +137,16 @@
       paceMs: 3,
     });
 
+    function pyQuote(s) {
+      return "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+    }
+
     async function connect(){
       try{
         $('#btnConnect').disabled = true;
         const baud = parseInt($('#baud').value.trim() || '115200', 10);
         if (repl.connected) { await repl.disconnect(); }
         await repl.connect({ baudRate: baud });
-        // onStatus(true) is triggered inside connect(); UI will enable immediately
       }catch(err){
         log(`[CONNECT ERROR] ${err}`);
         setConn(false);
@@ -167,6 +181,27 @@
 
     function clearLog(){ logEl.textContent = ''; }
 
+    // 🔹 ĐỔI TÊN THIẾT BỊ QUA SERIAL
+    async function setNameAndReset(){
+      const suffix = $('#nameSuffix').value.trim();
+      if (!suffix){
+        log('Nhập suffix mới trước (ví dụ: R1-01).');
+        return;
+      }
+      const quoted = pyQuote(suffix);
+      const script = `
+import setting, machine
+setting.set_device_suffix(${quoted})
+machine.reset()
+`;
+      try{
+        log(`Đổi tên BLE: MEBLOCK-${suffix} ...`);
+        await repl.runCode(script, { label: 'set_ble_name' });
+      }catch(e){
+        log(`[SET NAME ERROR] ${e}`);
+      }
+    }
+
     // bind
     $('#btnConnect').addEventListener('click', connect);
     $('#btnDisconnect').addEventListener('click', disconnect);
@@ -175,6 +210,7 @@
     $('#btnReset').addEventListener('click', doReset);
     $('#btnFlash').addEventListener('click', flashSelected);
     $('#btnClear').addEventListener('click', clearLog);
+    $('#btnSetName').addEventListener('click', setNameAndReset);
 
     setConn(false);
     window.addEventListener('beforeunload', () => { try{ repl.disconnect(); } catch{} });
