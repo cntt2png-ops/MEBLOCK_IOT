@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>MEBLOCK Web Flasher + Terminal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- ESP Web Tools – dùng để nạp code -->
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1d283a 0, #020617 52%);
+      color: #f9fafb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .shell {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.98);
+      border-radius: 18px;
+      padding: 20px 24px;
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(148, 163, 184, 0.15);
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+    }
+    @media (max-width: 900px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+    .subtitle {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #020617;
+      color: #9ca3af;
+      border: 1px solid #1f2937;
+      margin-bottom: 10px;
+    }
+    .column-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .panel {
+      background: #020617;
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 1px solid #111827;
+    }
+    .panel + .panel {
+      margin-top: 10px;
+    }
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition:
+        background 0.12s ease,
+        box-shadow 0.12s ease,
+        transform 0.08s ease;
+    }
+    button.primary {
+      background: #22c55e;
+      color: #022c22;
+      box-shadow: 0 10px 22px rgba(34, 197, 94, 0.35);
+    }
+    button.primary:hover {
+      background: #16a34a;
+      box-shadow: 0 10px 26px rgba(34, 197, 94, 0.4);
+      transform: translateY(-0.5px);
+    }
+    button.secondary {
+      background: #1f2933;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+    }
+    button.secondary:hover {
+      background: #111827;
+      transform: translateY(-0.5px);
+    }
+    button.sm {
+      padding: 6px 11px;
+      font-size: 12px;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    #log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      background: #020617;
+      border-radius: 10px;
+      padding: 8px 10px;
+      border: 1px solid #111827;
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 12px;
+    }
+    .input-row input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.6);
+    }
+    code {
+      font-size: 12px;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+    <!-- CỘT TRÁI: KẾT NỐI & TERMINAL -->
+    <div>
+      <h1>MEBLOCK Factory Console</h1>
+      <p class="subtitle">
+        ESP32-S3 Factory firmware (BLE + OTA). Dùng Web Serial để xem log và gửi lệnh.
+      </p>
+      <div class="badge">
+        Web Serial • 115200 baud • Lệnh: <code>RESET_FACTORY</code>, <code>BOOT_APP1</code>, ...
+      </div>
+
+      <div class="panel">
+        <div class="column-title">1. Kết nối cổng Serial</div>
+        <p class="subtitle" style="margin-bottom:6px">
+          Nhấn nút bên dưới để chọn cổng ESP32-S3 và mở terminal.
+        </p>
+        <div class="btn-row">
+          <button id="btnConnect" class="primary">
+            🔌 Kết nối terminal
+          </button>
+          <button id="btnClearLog" class="secondary sm">
+            🧹 Xoá log
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="column-title">2. Gửi lệnh nhanh</div>
+        <p class="subtitle" style="margin-bottom:4px">
+          Cần đã kết nối. Firmware factory của bạn hỗ trợ:
+          <code>RESET_FACTORY</code>, <code>BOOT_APP1</code>, <code>PART_OTA1?</code>, <code>NAME?</code>, ...
+        </p>
+        <div class="btn-row">
+          <button id="btnBootApp1" class="secondary sm">
+            🚀 BOOT_APP1
+          </button>
+          <button id="btnResetFactory" class="secondary sm">
+            🔄 RESET_FACTORY
+          </button>
+          <button id="btnPartOta1" class="secondary sm">
+            📦 PART_OTA1?
+          </button>
+        </div>
+        <div class="input-row">
+          <input id="customCmd" placeholder="Gõ lệnh tuỳ ý, ví dụ: NAME? hoặc NAME=UNO-01" />
+          <button id="btnSendCmd" class="secondary sm">Gửi</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="column-title">Terminal</div>
+        <div id="log"></div>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI: NẠP CODE (FLASH FIRMWARE) -->
+    <div>
+      <div class="panel" style="height:100%;display:flex;flex-direction:column;justify-content:space-between;">
+        <div>
+          <div class="column-title">3. Nạp firmware (OTA_1)</div>
+          <p class="subtitle">
+            Nút này chỉ dùng để <b>nạp file .bin</b> vào flash, theo offset cấu hình
+            trong <code>firmware/manifest.json</code>.
+            Không đụng gì tới Web Serial.
+          </p>
+          <p class="subtitle">
+            Thường manifest OTA_1 của bạn sẽ chứa:
+            <code>"offset": 0x150000</code> (Partition scheme: Default 4MB with spiffs).
+          </p>
+        </div>
+
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+          <!-- NÚT NẠP CODE -->
+          <esp-web-install-button
+            manifest="./firmware/manifest.json">
+            <button slot="activate" class="primary" style="width:100%;justify-content:center;">
+              💾 NẠP CODE từ manifest
+            </button>
+            <span slot="unsupported">Trình duyệt không hỗ trợ Web Serial.</span>
+            <span slot="not-allowed">Cần chạy trên HTTPS hoặc http://localhost.</span>
+          </esp-web-install-button>
+
+          <p class="subtitle" style="margin-top:8px">
+            Luồng khuyến nghị:
+            <br/>• Nạp code OTA_1 bằng nút bên trên
+            <br/>• Board reboot vào FACTORY
+            <br/>• Dùng nút <code>BOOT_APP1</code> ở cột trái để chuyển sang USER APP.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const logEl = document.getElementById('log');
+    const btnConnect = document.getElementById('btnConnect');
+    const btnClearLog = document.getElementById('btnClearLog');
+    const btnBootApp1 = document.getElementById('btnBootApp1');
+    const btnResetFactory = document.getElementById('btnResetFactory');
+    const btnPartOta1 = document.getElementById('btnPartOta1');
+    const btnSendCmd = document.getElementById('btnSendCmd');
+    const customCmdInput = document.getElementById('customCmd');
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    let port = null;
+    let reader = null;
+    let isConnected = false;
+
+    function log(msg) {
+      const ts = new Date().toISOString().substring(11, 19);
+      logEl.textContent += `[${ts}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setButtonsEnabled(connected) {
+      btnBootApp1.disabled = !connected;
+      btnResetFactory.disabled = !connected;
+      btnPartOta1.disabled = !connected;
+      btnSendCmd.disabled = !connected;
+      customCmdInput.disabled = !connected;
+    }
+
+    async function connectSerial() {
+      if (!('serial' in navigator)) {
+        alert('Trình duyệt không hỗ trợ Web Serial. Hãy dùng Chrome / Edge.');
+        return;
+      }
+
+      try {
+        if (!port) {
+          log('Chọn cổng Serial...');
+          port = await navigator.serial.requestPort();
+        }
+
+        await port.open({ baudRate: 115200 });
+        log('Đã mở cổng Serial ở 115200.');
+
+        reader = port.readable.getReader();
+        isConnected = true;
+        btnConnect.textContent = '🔌 Ngắt kết nối';
+        setButtonsEnabled(true);
+
+        (async () => {
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              if (value) {
+                log(decoder.decode(value));
+              }
+            }
+          } catch (err) {
+            console.error('Serial read error:', err);
+            log('Lỗi đọc Serial: ' + err.message);
+          }
+        })();
+
+      } catch (err) {
+        console.error(err);
+        log('Không thể mở Serial: ' + err.message);
+      }
+    }
+
+    async function disconnectSerial() {
+      try {
+        if (reader) {
+          await reader.cancel();
+          reader = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+        log('Đã ngắt kết nối Serial.');
+      } catch (err) {
+        console.error(err);
+        log('Lỗi khi đóng Serial: ' + err.message);
+      } finally {
+        isConnected = false;
+        btnConnect.textContent = '🔌 Kết nối terminal';
+        setButtonsEnabled(false);
+      }
+    }
+
+    async function sendCommand(cmd) {
+      if (!isConnected || !port?.writable) {
+        log('Chưa kết nối Serial.');
+        return;
+      }
+      const writer = port.writable.getWriter();
+      const data = encoder.encode(cmd + '\n');
+      await writer.write(data);
+      writer.releaseLock();
+      log('>> ' + cmd);
+    }
+
+    // ====== SỰ KIỆN NÚT ======
+    btnConnect.addEventListener('click', () => {
+      if (!isConnected) {
+        connectSerial();
+      } else {
+        disconnectSerial();
+      }
+    });
+
+    btnClearLog.addEventListener('click', () => {
+      logEl.textContent = '';
+    });
+
+    btnBootApp1.addEventListener('click', () => {
+      sendCommand('BOOT_APP1');
+    });
+
+    btnResetFactory.addEventListener('click', () => {
+      sendCommand('RESET_FACTORY');
+    });
+
+    btnPartOta1.addEventListener('click', () => {
+      sendCommand('PART_OTA1?');
+    });
+
+    btnSendCmd.addEventListener('click', () => {
+      const cmd = customCmdInput.value.trim();
+      if (cmd) {
+        sendCommand(cmd);
+        customCmdInput.value = '';
+      }
+    });
+
+    customCmdInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnSendCmd.click();
+      }
+    });
+
+    // ban đầu disable các nút lệnh
+    setButtonsEnabled(false);
+  </script>
+</body>
+</html>

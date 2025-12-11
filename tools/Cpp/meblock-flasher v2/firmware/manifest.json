@@ -1,0 +1,16 @@
+{
+  "name": "MEBLOCK User App",
+  "version": "1.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "Oled_test.ino.bin",
+          "offset": 3211264
+        }
+      ]
+    }
+  ]
+}
