@@ -1,6 +1,6 @@
 from rgbled import RGBLed, RED, GREEN, BLUE
 from time import sleep
-led = RGBLed()
+led = RGBLed(pin_r=21, pin_g=47, pin_b=48)
 while True: 
     # 3 màu cơ bản
     led.color(RED)         # đỏ
