@@ -238,7 +238,7 @@ class Oled:
                  sda=None, scl=None,
                  driver="SSD1306",
                  addr=None,
-                 backend="hard",  # giữ tham số nhưng không còn dùng soft
+                 backend="hard",  
                  i2c_id=0, freq=400_000,
                  sh1106_offset=2,
                  debug=False):
