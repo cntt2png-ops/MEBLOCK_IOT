@@ -1,199 +1,395 @@
-# mqtt.py — Thư viện MQTT MicroPython/ESP32
-# API:
-#   connect_wifi(ssid, password, timeout_s=15) -> ip
-#   connect_broker(server, port=1883, username=None, password=None, *,
-#                  client_id=None, keepalive=30, use_tls=False, ssl_params=None,
-#                  clean_session=True, will_topic=None, will_msg=None,
-#                  will_qos=0, will_retain=False)
-#   publish(topic, payload, *, qos=0, retain=False)
-#   on_receive_message(topic, callback, *, qos=0)
-#   check_message()
-#   disconnect()
+# =======================
+# MEBLOCK MQTT (Micropython) - v2
+# =======================
+# Chuẩn topic (theo doc):
+#   Command: meblock/{username}/{channel}/command
+#   Data   : meblock/{username}/{channel}/data
+#
+# Blockly blocks tối giản:
+#   - connect_wifi(ssid, password)
+#   - connect_broker(server, port, user, password, client_id=None)
+#       -> CHỈ connect, KHÔNG subscribe
+#   - connect_dashboard(username)
+#       -> subscribe meblock/{username}/+/command (nghe mọi channel)
+#   - on_receive_message(channel, action, callback)
+#       -> callback(value, action, channel, username)
+#   - check_message()  (gọi trong loop)
+#   - send_value(channel, value)
+#   - send_sensor_data(channel, temperature, humidity, battery, timestamp=None)
 
 import time
 import network
-import ubinascii
 import machine
+import ujson
+import ubinascii
+from umqtt.simple import MQTTClient
 
-try:
-    # MicroPython's built-in MQTT client
-    from umqtt.simple import MQTTClient
-except Exception as e:
-    raise RuntimeError("umqtt.simple không có sẵn trong firmware: %r" % e)
-
-# ---- Trạng thái toàn cục ----
 _client = None
-_connected = False
-_handlers = {}   # topic(str) -> callback(payload: bytes, topic: str)
-_subs = set()    # các topic đã subscribe
-_conn_cfg = {}   # tham số kết nối để reconnect
-_backoff_s = 1
 
-# ---- Wi-Fi ----
-def connect_wifi(ssid, password, timeout_s=15):
-    sta = network.WLAN(network.STA_IF)
-    if not sta.active():
-        sta.active(True)
-    if not sta.isconnected():
-        sta.connect(ssid, password)
-        t0 = time.ticks_ms()
-        while not sta.isconnected():
-            time.sleep_ms(200)
-            if time.ticks_diff(time.ticks_ms(), t0) > timeout_s*1000:
-                break
-    if not sta.isconnected():
-        raise OSError("Wi-Fi connect timeout")
-    ip = sta.ifconfig()[0]
-    print("[wifi] connected:", ip)
-    return ip
+_cfg = {
+    "server": None,
+    "port": 1883,
+    "user": None,
+    "password": None,
+    "client_id": None,
+    "keepalive": 60,
+}
 
-# ---- Nội bộ: tạo client & kết nối ----
-def _make_client(cfg):
-    # sinh client_id nếu không truyền
-    cid = cfg.get("client_id")
-    if not cid:
-        tail = ubinascii.hexlify(machine.unique_id()).decode()[-4:]
-        cid = "esp32-%s" % tail
+_dashboard = {
+    "username": None,
+    "sub_topic": None,   # meblock/{username}/+/command
+}
 
-    c = MQTTClient(
-        client_id=cid,
-        server=cfg["server"],
-        port=cfg.get("port", 1883),
-        user=cfg.get("username", None),
-        password=cfg.get("password", None),
-        keepalive=cfg.get("keepalive", 30),
-        ssl=cfg.get("use_tls", False),
-        ssl_params=cfg.get("ssl_params", None),
-    )
+# Callback registry
+# priority: (channel, action) -> (channel, "*") -> ("*", action) -> any
+_cb_exact = {}       # {(ch, action): cb}
+_cb_channel = {}     # {ch: cb}
+_cb_action = {}      # {action: cb}
+_cb_any = None       # cb
 
-    # LWT (nếu có)
-    wt = cfg.get("will_topic")
-    wm = cfg.get("will_msg")
-    if wt is not None and wm is not None:
-        # umqtt.simple: set_last_will(topic, msg, retain=False, qos=0)
-        c.set_last_will(wt, wm, retain=cfg.get("will_retain", False), qos=cfg.get("will_qos", 0))
 
-    # callback chung -> phân phối theo _handlers
-    def _on_message(topic_b, payload_b):
-        try:
-            t = topic_b.decode() if isinstance(topic_b, (bytes, bytearray)) else str(topic_b)
-        except:
-            t = str(topic_b)
-        # Tìm callback khớp topic (ưu tiên match exact; wildcard do broker xử lý lúc subscribe)
-        cb = _handlers.get(t, None)
-        if cb:
-            try:
-                cb(payload_b, t)
-            except Exception as e:
-                # tránh văng vòng lặp
-                print("[mqtt] handler error:", e)
+MEBLOCK_SERVER = "103.195.239.8"
+MEBLOCK_USER = "admin"
+MEBLOCK_PASS = "Leto@n1989"
 
-        # Nếu sub bằng wildcard, broker đã match rồi nhưng key trong _handlers là wildcard.
-        # Ta thử gọi các handler wildcard nếu có:
-        for patt, h in _handlers.items():
-            if patt.endswith("/#") or "/+" in patt or patt == "#":
-                # không kiểm tra pattern phức tạp ở client; vì broker đã route đúng,
-                # ta chỉ gọi khi handler đăng ký wildcard và không phải exact key.
-                if h is not cb:
-                    try:
-                        h(payload_b, t)
-                    except Exception as e:
-                        print("[mqtt] wildcard handler error:", e)
+# ---------- Helpers ----------
+def _make_client_id(prefix="ESP32"):
+    try:
+        uid = ubinascii.hexlify(machine.unique_id()).decode()
+    except:
+        uid = "0000"
+    return "{}-{}".format(prefix, uid)
 
-    c.set_callback(_on_message)
-    return c
+def _safe_decode(b):
+    try:
+        return b.decode()
+    except:
+        return str(b)
 
-def _connect_and_subscribe():
-    global _client, _connected
-    _client.connect(clean_session=_conn_cfg.get("clean_session", True))
-    _connected = True
-    # resubscribe các topic đã có handler
-    for t in _handlers.keys():
-        if t not in _subs:
-            qos = 0
-            _client.subscribe(t, qos=qos)
-            _subs.add(t)
-    print("[mqtt] connected & resubscribed:", len(_subs), "topics")
+def _parse_topic(topic):
+    # meblock/{username}/{channel}/command
+    parts = topic.split("/")
+    if len(parts) >= 4 and parts[0] == "meblock":
+        return parts[1], parts[2], parts[3]
+    return None, None, None
 
-# ---- Public: connect_broker ----
-def connect_broker(server, port=1883, username=None, password=None, *,
-                   client_id=None, keepalive=30, use_tls=False, ssl_params=None,
-                   clean_session=True, will_topic=None, will_msg=None, will_qos=0, will_retain=False):
+def _extract_value(doc):
+    # Ưu tiên dạng dạy học: {"value": ...}
+    if isinstance(doc, dict) and ("value" in doc):
+        return doc.get("value")
+    # Chuẩn doc: {"params":{"value":...}}
+    params = (doc.get("params") or {}) if isinstance(doc, dict) else {}
+    if isinstance(params, dict) and ("value" in params):
+        return params.get("value")
+    return None
+
+def _call_cb(cb, value, action, channel, username, params, raw, topic):
+    # Ưu tiên signature “dễ Blockly”: 4 args
+    try:
+        cb(value, action, channel, username)
+        return
+    except TypeError:
+        pass
+    # Nâng cao: 5 args (thêm params)
+    try:
+        cb(value, action, channel, username, params)
+        return
+    except TypeError:
+        pass
+    # Debug: 7 args
+    cb(value, action, channel, username, params, raw, topic)
+
+
+# ---------- MQTT raw callback ----------
+def _mqtt_callback(topic_b, payload_b):
+    topic = _safe_decode(topic_b)
+    raw = _safe_decode(payload_b)
+
+    u_topic, ch_topic, kind = _parse_topic(topic)
+    if kind != "command":
+        return
+
+    # Lọc theo dashboard đã chọn
+    if _dashboard["username"] and u_topic != _dashboard["username"]:
+        return
+
+    # Parse JSON
+    try:
+        doc = ujson.loads(raw)
+        if not isinstance(doc, dict):
+            doc = {"value": doc}
+    except Exception:
+        doc = {"raw": raw}
+
+    action = doc.get("action") if isinstance(doc, dict) else None
+
+    # Channel lấy từ JSON (chanel/channel) nếu có, fallback topic
+    ch_doc = None
+    if isinstance(doc, dict):
+        ch_doc = doc.get("chanel") or doc.get("channel")
+    channel = ch_doc or ch_topic
+
+    # Username lấy từ JSON nếu có, fallback topic
+    u_doc = doc.get("username") if isinstance(doc, dict) else None
+    username = u_doc or u_topic
+
+    value = _extract_value(doc)
+    params = doc.get("params") if isinstance(doc, dict) else None
+    if params is None:
+        params = {}
+
+    # Dispatch
+    cb = _cb_exact.get((channel, action))
+    if cb:
+        _call_cb(cb, value, action, channel, username, params, doc, topic)
+        return
+
+    cb = _cb_channel.get(channel)
+    if cb:
+        _call_cb(cb, value, action, channel, username, params, doc, topic)
+        return
+
+    cb = _cb_action.get(action)
+    if cb:
+        _call_cb(cb, value, action, channel, username, params, doc, topic)
+        return
+
+    if _cb_any:
+        _call_cb(_cb_any, value, action, channel, username, params, doc, topic)
+
+
+# =======================
+# Public API
+# =======================
+def connect_wifi(ssid, password, timeout_s=20):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+
+    if wlan.isconnected():
+        return True
+
+    print("Dang ket noi WiFi {}...".format(ssid), end="")
+    wlan.connect(ssid, password)
+
+    t0 = time.time()
+    while (not wlan.isconnected()) and (time.time() - t0 < timeout_s):
+        print(".", end="")
+        time.sleep(1)
+    print()
+
+    if wlan.isconnected():
+        print("WiFi OK! IP:", wlan.ifconfig()[0])
+        return True
+
+    print("WiFi FAIL!")
+    return False
+
+
+def connect_broker(server, port=1883, user=None, password=None, client_id=None, keepalive=60):
     """
-    Kết nối tới broker và ghi nhớ cấu hình để có thể reconnect.
+    CHỈ connect broker, KHÔNG subscribe.
+    (khác bản cũ: connect_broker() từng subscribe + reset khi lỗi) :contentReference[oaicite:4]{index=4}
     """
-    global _client, _connected, _conn_cfg, _backoff_s
-    _conn_cfg = dict(server=server, port=port, username=username, password=password,
-                     client_id=client_id, keepalive=keepalive,
-                     use_tls=use_tls, ssl_params=ssl_params,
-                     clean_session=clean_session,
-                     will_topic=will_topic, will_msg=will_msg,
-                     will_qos=will_qos, will_retain=will_retain)
-    _backoff_s = 1
-    _client = _make_client(_conn_cfg)
-    _connect_and_subscribe()
-    print("[mqtt] broker:", server, port)
+    global _client, _cfg
 
-# ---- Public: publish ----
-def publish(topic, payload, *, qos=0, retain=False):
-    if not _connected:
-        raise OSError("MQTT not connected")
-    if isinstance(payload, str):
-        payload = payload.encode()
-    _client.publish(topic, payload, retain=retain, qos=qos)
+    _cfg["server"] = server
+    _cfg["port"] = port
+    _cfg["user"] = user
+    _cfg["password"] = password
+    _cfg["keepalive"] = keepalive
+    _cfg["client_id"] = client_id or _make_client_id("MEBLOCK")
 
-# ---- Public: on_receive_message ----
-def on_receive_message(topic, callback, *, qos=0):
-    """
-    Đăng ký callback cho topic (có thể wildcard). Nếu đang kết nối sẽ subscribe luôn.
-    callback(payload: bytes, topic: str) -> None
-    """
-    _handlers[topic] = callback
-    if _connected and topic not in _subs:
-        _client.subscribe(topic, qos=qos)
-        _subs.add(topic)
+    try:
+        _client = MQTTClient(
+            _cfg["client_id"],
+            _cfg["server"],
+            port=_cfg["port"],
+            user=_cfg["user"],
+            password=_cfg["password"],
+            keepalive=_cfg["keepalive"],
+        )
+        _client.set_callback(_mqtt_callback)
+        _client.connect()
+        print("MQTT OK! connected to", server)
+        return True
+    except Exception as e:
+        print("MQTT connect FAIL:", e)
+        _client = None
+        return False
 
-# ---- Public: check_message ----
-def check_message(max_messages=1):
+
+def connect_meblock(port=1883):
+    return connect_broker(MEBLOCK_SERVER, port, MEBLOCK_USER, MEBLOCK_PASS)
+
+def connect_dashboard(username):
     """
-    Bơm vòng nhận non-block. Mỗi lần gọi cố gắng lấy tối đa max_messages (mặc định 1).
-    Nếu mất kết nối, sẽ tự reconnect (có backoff).
+    Subscribe wildcard để bỏ block Subscribe Channel:
+      meblock/{username}/+/command
     """
-    global _client, _connected, _backoff_s
     if not _client:
-        raise RuntimeError("Broker not configured. Call connect_broker() first.")
+        return False
 
-    count = 0
-    while count < max_messages:
+    _dashboard["username"] = str(username)
+    _dashboard["sub_topic"] = "meblock/{}/+/command".format(_dashboard["username"])
+
+    try:
+        _client.subscribe(_dashboard["sub_topic"])
+        print("Subscribed:", _dashboard["sub_topic"])
+        return True
+    except Exception as e:
+        print("Subscribe FAIL:", e)
+        return False
+
+
+def on_receive_message(channel, action=None, callback=None):
+    """
+    2 cách dùng:
+      - on_receive_message("V1", "BUTTON_PRESS", cb)
+      - on_receive_message("V1", cb)  (mọi action trên V1)
+      - on_receive_message("*", "BUTTON_PRESS", cb) (mọi channel, lọc action)
+    callback ưu tiên: cb(value, action, channel, username)
+    """
+    global _cb_any
+
+    # on_receive_message("V1", cb)
+    if callback is None and callable(action):
+        _cb_channel[str(channel)] = action
+        return
+
+    # on_receive_message("*", "*", cb) -> any
+    if str(channel) == "*" and (action == "*" or action is None):
+        _cb_any = callback
+        return
+
+    # exact (channel, action)
+    if callback:
+        _cb_exact[(str(channel), str(action))] = callback
+
+
+def on_receive_action(action, callback):
+    """Lọc theo action cho mọi channel."""
+    _cb_action[str(action)] = callback
+
+
+def on_receive_any(callback):
+    """Nhận mọi command."""
+    global _cb_any
+    _cb_any = callback
+
+
+def check_message(auto_reconnect=True):
+    """
+    Gọi trong loop.
+    Bản cũ reset chip khi mất kết nối :contentReference[oaicite:5]{index=5},
+    bản mới sẽ cố reconnect nếu auto_reconnect=True.
+    """
+    global _client
+    if not _client:
+        return False
+
+    try:
+        _client.check_msg()
+        return True
+    except Exception as e:
+        print("MQTT check_msg error:", e)
+        if auto_reconnect:
+            return reconnect()
+        return False
+
+
+def reconnect(retry=3, delay_s=2):
+    """Reconnect broker + resub dashboard wildcard."""
+    global _client
+
+    for _ in range(retry):
         try:
-            _client.check_msg()  # non-block; gọi callback nếu có
-            count += 1
-        except OSError as e:
-            # Mất kết nối -> reconnect
-            _connected = False
-            print("[mqtt] socket error, reconnecting in", _backoff_s, "s:", e)
-            time.sleep(_backoff_s)
-            _backoff_s = min(_backoff_s * 2, 30)
             try:
-                _client = _make_client(_conn_cfg)
-                _connect_and_subscribe()
-                _backoff_s = 1
-                break
-            except Exception as e2:
-                print("[mqtt] reconnect failed:", e2)
-                # sẽ thử lại ở lần check_message sau
-                break
-        except Exception as e:
-            # Lỗi khác: log nhẹ
-            print("[mqtt] check_msg error:", e)
-            break
+                if _client:
+                    _client.disconnect()
+            except:
+                pass
 
-# ---- Public: disconnect ----
-def disconnect():
-    global _client, _connected
-    if _client:
-        try:
-            _client.disconnect()
-        except:
-            pass
-    _connected = False
+            _client = MQTTClient(
+                _cfg["client_id"],
+                _cfg["server"],
+                port=_cfg["port"],
+                user=_cfg["user"],
+                password=_cfg["password"],
+                keepalive=_cfg["keepalive"],
+            )
+            _client.set_callback(_mqtt_callback)
+            _client.connect()
+
+            # resub dashboard
+            if _dashboard["sub_topic"]:
+                _client.subscribe(_dashboard["sub_topic"])
+
+            print("MQTT reconnected OK")
+            return True
+        except Exception as e:
+            print("MQTT reconnect FAIL:", e)
+            time.sleep(delay_s)
+
+    _client = None
+    return False
+
+
+def _publish(topic, data_dict, retry_once=True):
+    global _client
+    if not _client:
+        return False
+
+    try:
+        _client.publish(topic, ujson.dumps(data_dict))
+        return True
+    except Exception as e:
+        print("Publish FAIL:", e)
+        if retry_once and reconnect():
+            try:
+                _client.publish(topic, ujson.dumps(data_dict))
+                return True
+            except Exception as e2:
+                print("Publish retry FAIL:", e2)
+        return False
+
+
+def send_value(channel, value, include_channel_field=False):
+    """
+    ESP -> Frontend (topic /data). Payload tối giản: {"value": ...}
+    """
+    if not _dashboard["username"]:
+        raise RuntimeError("Chua chon dashboard. Goi connect_dashboard(username) truoc.")
+
+    ch = str(channel)
+    topic = "meblock/{}/{}/data".format(_dashboard["username"], ch)
+
+    payload = {"value": value}
+    if include_channel_field:
+        payload["channel"] = ch
+
+    return _publish(topic, payload)
+
+
+def send_sensor_data(channel, temperature=None, humidity=None, battery=None, timestamp=None, extra=None):
+    """
+    ESP -> Frontend (topic /data). Payload dạng sensor: {temperature, humidity, battery, timestamp, ...}
+    """
+    if not _dashboard["username"]:
+        raise RuntimeError("Chua chon dashboard. Goi connect_dashboard(username) truoc.")
+
+    ch = str(channel)
+    topic = "meblock/{}/{}/data".format(_dashboard["username"], ch)
+
+    payload = {}
+    if temperature is not None:
+        payload["temperature"] = temperature
+    if humidity is not None:
+        payload["humidity"] = humidity
+    if battery is not None:
+        payload["battery"] = battery
+    if timestamp is not None:
+        payload["timestamp"] = timestamp
+    if isinstance(extra, dict):
+        payload.update(extra)
+
+    return _publish(topic, payload)

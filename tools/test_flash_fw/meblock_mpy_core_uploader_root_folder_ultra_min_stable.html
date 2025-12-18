@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MEBLOCK • Upload Core .py (Folder → ROOT) • Minimal</title>
+  <style>
+    :root{
+      --panel:#121826; --muted:#9aa4b2; --text:#e5e7eb; --brand:#4f46e5;
+      --ok:#10b981; --warn:#f59e0b; --err:#ef4444; --border:#1f2937;
+      --radius:16px; --shadow:0 10px 35px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(120deg,#0b0e14,#10131b);color:var(--text);
+      font:14px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:18px 22px;
+      position:sticky;top:0;background:rgba(11,14,20,.7);backdrop-filter:blur(6px);
+      border-bottom:1px solid var(--border);z-index:10}
+    header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+    .badge{font-size:11px;color:#9ca3af;border:1px solid var(--border);padding:2px 8px;border-radius:999px}
+    .wrap{max-width:760px;margin:22px auto;padding:0 16px 60px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .sec{padding:16px}
+    .sec h2{margin:0 0 12px;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .tiny{font-size:12px;color:var(--muted)}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input[type=text]{width:100%;background:#0f1422;color:var(--text);border:1px solid #263041;
+      border-radius:12px;padding:10px 12px;outline:none}
+    input[type=file]{width:100%}
+    button{appearance:none;border:1px solid #2a3550;background:#192038;color:var(--text);
+      padding:10px 14px;border-radius:12px;cursor:pointer}
+    button.primary{background:var(--brand);border-color:transparent}
+    button.good{background:#0b2d24;border-color:#0b2d24;color:#a7f3d0}
+    button.warn{background:#2b2410;border-color:#2b2410;color:#fde68a}
+    button.danger{background:#2b1618;border-color:#2b1618;color:#fecaca}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .status{display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#6b7280}
+    .dot.ok{background:var(--ok)}
+    .dot.bad{background:var(--err)}
+    .banner{background:#1f2937;color:#e5e7eb;border-left:4px solid var(--warn);padding:10px 12px;
+      border-radius:8px;margin:0 0 12px}
+    .log{background:#0a0f1a;border-top:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);
+      max-height:360px;overflow:auto;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      white-space:pre-wrap}
+    progress{width:100%;height:12px}
+    hr{border:0;border-top:1px solid var(--border);margin:14px 0}
+    .hide{display:none !important}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>MEBLOCK • Upload core MicroPython (.py) vào ROOT (/)</h1>
+      <span class="badge">folder-only • overwrite • minimal UI</span>
+    </div>
+    <div class="status"><span id="connDot" class="dot"></span><span id="connLabel">Disconnected</span></div>
+  </header>
+
+  <div class="wrap">
+    <div id="insecureBanner" class="banner hide">
+      Web Serial cần chạy trên <b>HTTPS</b> hoặc <b>localhost</b>.
+      Ví dụ: <code>python -m http.server 8000</code> rồi mở <code>http://localhost:8000</code>.
+    </div>
+
+    <div class="card">
+      <div class="sec">
+        <h2>1) Kết nối Serial</h2>
+
+        <label>Baud rate</label>
+        <input id="baud" type="text" value="115200" />
+
+        <div class="row" style="margin-top:10px">
+          <button id="btnConnect" class="primary">Chọn cổng & Connect</button>
+          <button id="btnDisconnect">Disconnect</button>
+          <button id="btnStop" class="warn">Stop (CTRL-C)</button>
+          <button id="btnReset" class="warn">Reset</button>
+        </div>
+        <div class="tiny">Lưu ý: đóng Arduino Serial Monitor / Thonny nếu đang chiếm cổng.</div>
+
+        <hr/>
+
+        <h2>2) Chọn thư mục core (.py)</h2>
+        <label>Chọn thư mục (tool sẽ lấy toàn bộ file .py bên trong và nạp vào /)</label>
+        <input id="pickFolder" type="file" webkitdirectory directory multiple />
+
+        <div class="row" style="margin-top:10px">
+          <label class="tiny" style="margin:0">
+            <input type="checkbox" id="autoReset" checked style="vertical-align:middle;margin-right:6px">
+            Auto reset sau khi nạp xong
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <label class="tiny" style="margin:0">
+            Chunk size (bytes):
+            <input id="chunkSize" type="text" value="384" style="width:120px;margin-left:8px">
+          </label>
+        </div>
+
+        <hr/>
+
+        <h2>3) Flash</h2>
+        <div class="row">
+          <button id="btnFlash" class="good">Flash folder → ROOT</button>
+          <button id="btnAbort" class="danger">Abort</button>
+          <button id="btnClear" class="tiny" style="margin-left:auto">Clear log</button>
+        </div>
+
+        <label style="margin-top:14px">Overall progress</label>
+        <progress id="progOverall" max="100" value="0"></progress>
+        <div class="tiny" id="overallText">0 / 0 bytes</div>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    
+    class SerialMicroPythonREPL {
+      constructor({ onLog = (t)=>console.log(t), onStatus = ()=>{}, paceMs = 2 } = {}) {
+        this.onLog = onLog;
+        this.onStatus = onStatus;
+        this.paceMs = paceMs;
+
+        this.port = null;
+        this.reader = null;        // live read loop reader
+        this.writer = null;
+        this.enc = new TextEncoder();
+        this.connected = false;
+
+        this._readAbort = null;
+        this._writeQueue = Promise.resolve();
+        this._flashAbort = false;
+      }
+
+      _requireConnected(){ if(!this.connected || !this.port) throw new Error("Not connected"); }
+      async _sleep(ms){ if(!ms||ms<=0) return; return new Promise(r=>setTimeout(r,ms)); }
+      _log(t){ if(t) this.onLog(t); }
+
+      async _startReadLoop(){
+        if(!this.port || this.reader) return;
+        this._readAbort = new AbortController();
+        const signal = this._readAbort.signal;
+        const reader = this.port.readable.getReader();
+        this.reader = reader;
+        const td = new TextDecoder();
+        this._log("[ReadLoop] started.\n");
+        (async ()=>{
+          try{
+            while(true){
+              if(signal.aborted) break;
+              const {value, done} = await reader.read();
+              if(done) break;
+              if(value) this._log(td.decode(value));
+            }
+          }catch(err){
+            if(!signal.aborted) this._log(`[ReadLoop] error: ${err}\n`);
+          }finally{
+            try{ reader.releaseLock(); }catch{}
+            if(this.reader===reader) this.reader=null;
+            this._log("[ReadLoop] stopped.\n");
+          }
+        })();
+      }
+
+      async _stopReadLoop(){
+        if(!this.reader) return;
+        try{ this._readAbort?.abort(); }catch{}
+        this._readAbort = null;
+        try{ await this.reader.cancel(); }catch{}
+        try{ this.reader.releaseLock(); }catch{}
+        this.reader = null;
+      }
+
+      async connect({ baudRate = 115200 } = {}){
+        if(!("serial" in navigator)) throw new Error("Web Serial API not available (use Chrome/Edge)");
+        const port = await navigator.serial.requestPort({});
+        await port.open({ baudRate });
+        this.port = port;
+        this.connected = true;
+        this.writer = port.writable.getWriter();
+        this.onStatus(true);
+        this._log(`[Serial] Connected @${baudRate}.\n`);
+        await this._startReadLoop();
+      }
+
+      async disconnect(){
+        await this._stopReadLoop().catch(()=>{});
+        try{ if(this.writer) await this.writer.close(); }catch{}
+        try{ this.writer?.releaseLock(); }catch{}
+        this.writer=null;
+        try{ if(this.port) await this.port.close(); }catch{}
+        this.port=null;
+        this.connected=false;
+        this.onStatus(false);
+        this._log("[Serial] Disconnected.\n");
+      }
+
+      async _sendBytes(bytes, { chunkSize=128 } = {}){
+        this._requireConnected();
+        const w = this.writer;
+        this._writeQueue = this._writeQueue.then(async ()=>{
+          for(let i=0;i<bytes.length;i+=chunkSize){
+            await w.write(bytes.slice(i, i+chunkSize));
+            if(this.paceMs>0) await this._sleep(this.paceMs);
+          }
+        });
+        return this._writeQueue;
+      }
+      _sendText(t){ return this._sendBytes(this.enc.encode(t)); }
+
+      ctrlA(){ return this._sendBytes(Uint8Array.of(0x01)); }
+      ctrlB(){ return this._sendBytes(Uint8Array.of(0x02)); }
+      ctrlC(){ return this._sendBytes(Uint8Array.of(0x03)); }
+      ctrlD(){ return this._sendBytes(Uint8Array.of(0x04)); }
+
+      abortFlash(){ this._flashAbort = true; }
+
+      async stop(){ this._requireConnected(); await this.ctrlC(); this._log("[CTRL-C]\n"); }
+
+      async reset(){
+        this._requireConnected();
+        this._log("[machine.reset()]\n");
+        await this._exclusiveRaw(async (reader)=>{
+          await this._enterRawWait(reader);
+          await this._rawExecWait(reader, "import machine\nmachine.reset()", { allowPromptMissing: true, timeoutMs: 1500 });
+        });
+      }
+
+      static base64FromBytes(bytes){
+        let binary = "";
+        const step = 0x8000;
+        for(let i=0;i<bytes.length;i+=step){
+          const sub = bytes.subarray(i, i+step);
+          binary += String.fromCharCode.apply(null, sub);
+        }
+        return btoa(binary);
+      }
+
+      static pyQuote(s){
+        return "'" + String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'") + "'";
+      }
+
+      async _exclusiveRaw(fn){
+        this._requireConnected();
+        const wasLooping = !!this.reader;
+        await this._stopReadLoop().catch(()=>{});
+
+        const reader = this.port.readable.getReader();
+        try{
+          return await fn(reader);
+        } finally {
+          try{ reader.releaseLock(); }catch{}
+          if(wasLooping){
+            await this._sleep(150);
+            await this._startReadLoop().catch(()=>{});
+          }
+        }
+      }
+
+      async _enterRawWait(reader, timeoutMs=2000){
+        await this.ctrlC(); await this._sleep(30);
+        await this.ctrlA();
+
+        const td = new TextDecoder();
+        let buf = "";
+        const start = Date.now();
+        while(Date.now() - start < timeoutMs){
+          const {value, done} = await reader.read();
+          if(done) throw new Error("Port closed");
+          if(value){
+            buf += td.decode(value);
+            if(buf.includes("raw REPL") && buf.includes(">")) return;
+            if(buf.trimEnd().endsWith(">")) return;
+          }
+        }
+      }
+
+      async _rawExecWait(reader, code, { timeoutMs=6000, allowPromptMissing=false } = {}){
+        if(!code.endsWith("\n")) code += "\n";
+        await this._sendText(code);
+        await this.ctrlD();
+
+        const out = [];
+        const err = [];
+        let phase = 0; // 0 stdout, 1 stderr, 2 wait prompt
+        let gotPrompt = false;
+        const start = Date.now();
+
+        while(true){
+          if(Date.now() - start > timeoutMs){
+            if(allowPromptMissing) return { outText:"", errText:"" };
+            throw new Error("Timeout waiting raw REPL response");
+          }
+          const {value, done} = await reader.read();
+          if(done){
+            if(allowPromptMissing) return { outText:"", errText:"" };
+            throw new Error("Port closed while waiting response");
+          }
+          if(!value) continue;
+
+          for(let i=0;i<value.length;i++){
+            const b = value[i];
+            if(phase === 0){
+              if(b === 0x04){ phase = 1; continue; }
+              out.push(b);
+            } else if(phase === 1){
+              if(b === 0x04){ phase = 2; continue; }
+              err.push(b);
+            } else {
+              if(b === 0x3E){ gotPrompt = true; break; } // '>'
+            }
+          }
+          if(gotPrompt) break;
+        }
+
+        const td = new TextDecoder();
+        const outText = td.decode(new Uint8Array(out)).replace(/\r/g,"");
+        const errText = td.decode(new Uint8Array(err)).replace(/\r/g,"");
+
+        if(errText.trim()){
+          this._log(errText.trimEnd() + "\n");
+          const first = errText.trim().split("\n")[0] || "RemoteError";
+          throw new Error(first);
+        }
+
+        const cleaned = outText.replace(/^OK\s*/g, "").trim();
+        if(cleaned) this._log(cleaned + "\n");
+
+        return { outText, errText };
+      }
+
+      async flashFiles(files, {
+        dstResolver = (file)=>file?.name || "main.py",
+        chunkSize = 384,
+        autoReset = true,
+        onOverallProgress,
+      } = {}){
+        this._requireConnected();
+        const arr = Array.from(files||[]).filter(f => f instanceof File);
+        if(!arr.length) throw new Error("No files");
+        this._flashAbort = false;
+
+        const metas = arr.map(f => ({ file: f, size: f.size, dst: String(dstResolver(f) || f.name) }));
+        const totalAll = metas.reduce((s,m)=>s+(m.size||0), 0);
+        let sentAll = 0;
+
+        this._log(`--- FLASH (${metas.length} files, ${totalAll} bytes) ---\n`);
+
+        await this._exclusiveRaw(async (reader)=>{
+          await this._enterRawWait(reader);
+
+          const init =
+            "import ubinascii, os\n" +
+            "def __fw(p,b64,m):\n" +
+            "    f=open(p,m)\n" +
+            "    f.write(ubinascii.a2b_base64(b64))\n" +
+            "    f.close()\n" +
+            "def __check(p):\n" +
+            "    s=open(p,'r').read()\n" +
+            "    compile(s, p, 'exec')\n";
+          await this._rawExecWait(reader, init);
+
+          for(let i=0;i<metas.length;i++){
+            if(this._flashAbort) throw new Error("FLASH_ABORTED");
+            const {file, dst} = metas[i];
+            this._log(`--- FILE ${i+1}/${metas.length}: ${file.name} -> ${dst} ---\n`);
+
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            let written = 0;
+
+            while(written < bytes.length){
+              if(this._flashAbort) throw new Error("FLASH_ABORTED");
+              const part = bytes.subarray(written, written + chunkSize);
+              const b64 = SerialMicroPythonREPL.base64FromBytes(part);
+              const mode = written === 0 ? "wb" : "ab";
+              const stmt = `__fw(${SerialMicroPythonREPL.pyQuote(dst)}, ${SerialMicroPythonREPL.pyQuote(b64)}, ${SerialMicroPythonREPL.pyQuote(mode)})`;
+              await this._rawExecWait(reader, stmt);
+
+              written += part.length;
+              sentAll += part.length;
+              onOverallProgress?.({ written: sentAll, total: totalAll });
+            }
+
+            await this._rawExecWait(reader, `__check(${SerialMicroPythonREPL.pyQuote(dst)})`);
+            this._log(`[OK] ${file.name} -> ${dst}\n`);
+          }
+
+          await this._rawExecWait(reader, "import os\ntry:\n    os.sync()\nexcept Exception:\n    pass\nprint('[FLASH_DONE]')\n");
+
+          if(autoReset){
+            this._log("[AUTO RESET]\n");
+            await this._rawExecWait(reader, "import machine\nmachine.reset()", { allowPromptMissing: true, timeoutMs: 1500 });
+          } else {
+            await this.ctrlB();
+          }
+        });
+
+        this._log("[DONE] Flash finished.\n");
+      }
+    }
+
+
+    const $ = (sel)=>document.querySelector(sel);
+    const logEl = $("#log");
+    function log(t){
+      const d = document.createElement("div");
+      d.textContent = t;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function setConn(connected){
+      $("#connDot").classList.toggle("ok", connected);
+      $("#connDot").classList.toggle("bad", !connected);
+      $("#connLabel").textContent = connected ? "Connected" : "Disconnected";
+      $("#btnConnect").disabled = connected;
+      $("#btnDisconnect").disabled = !connected;
+      $("#btnStop").disabled = !connected;
+      $("#btnReset").disabled = !connected;
+      $("#btnFlash").disabled = !connected;
+      $("#btnAbort").disabled = !connected;
+    }
+    if(!window.isSecureContext && location.hostname !== "localhost"){
+      $("#insecureBanner").classList.remove("hide");
+    }
+
+    const repl = new SerialMicroPythonREPL({
+      onLog: (t)=>log(t),
+      onStatus: (ok)=>setConn(ok),
+      paceMs: 3,
+    });
+
+    const state = { files: [], totalBytes: 0 };
+
+    function normalizePath(p){
+      p = (p || "").replace(/\\/g,"/");
+      p = p.replace(/\/+/g,"/");
+      p = p.replace(/^\.\//,"");
+      return p;
+    }
+    function baseNameFromPath(p){
+      const s = normalizePath(p);
+      const parts = s.split("/");
+      return parts[parts.length - 1] || "main.py";
+    }
+    function fmtBytes(n){
+      if(!Number.isFinite(n)) return "";
+      if(n < 1024) return `${n} B`;
+      if(n < 1024*1024) return `${(n/1024).toFixed(1)} KB`;
+      return `${(n/1024/1024).toFixed(2)} MB`;
+    }
+
+    function rebuildTotal(){
+      const pyFiles = state.files.filter(f => f.name.toLowerCase().endsWith(".py"));
+      state.totalBytes = pyFiles.reduce((s,f)=>s+f.size,0);
+      $("#progOverall").value = 0;
+      $("#overallText").textContent = `0 / ${fmtBytes(state.totalBytes)}`;
+    }
+
+    $("#btnClear").addEventListener("click", ()=>{ logEl.innerHTML = ""; });
+
+    $("#pickFolder").addEventListener("change", (e)=>{
+      const picked = Array.from(e.target.files || []);
+      state.files = picked; // folder-only
+      rebuildTotal();
+      log(`[FOLDER] Selected: ${picked.length} item(s)\n`);
+    });
+
+    $("#btnConnect").addEventListener("click", async ()=>{
+      try{
+        const baudRate = parseInt($("#baud").value, 10) || 115200;
+        await repl.connect({ baudRate });
+      }catch(err){
+        log(`[ERR] ${err?.message || err}\n`);
+      }
+    });
+    $("#btnDisconnect").addEventListener("click", async ()=>{
+      try{ await repl.disconnect(); }catch(err){ log(`[ERR] ${err?.message || err}\n`); }
+    });
+    $("#btnStop").addEventListener("click", async ()=>{
+      try{ await repl.stop(); }catch(err){ log(`[ERR] ${err?.message || err}\n`); }
+    });
+    $("#btnReset").addEventListener("click", async ()=>{
+      try{ await repl.reset(); }catch(err){ log(`[ERR] ${err?.message || err}\n`); }
+    });
+    $("#btnAbort").addEventListener("click", ()=>{
+      repl.abortFlash();
+      log("[ABORT] requested.\n");
+    });
+
+    $("#btnFlash").addEventListener("click", async ()=>{
+      if(!repl.connected){ log("[WARN] Chưa connect.\n"); return; }
+      const pyFiles = state.files.filter(f => f.name.toLowerCase().endsWith(".py"));
+      if(!pyFiles.length){ log("[WARN] Thư mục không có file .py.\n"); return; }
+
+      const autoReset = $("#autoReset").checked;
+      const chunkSize = Math.max(128, parseInt($("#chunkSize").value, 10) || 1024);
+
+      $("#progOverall").value = 0;
+      $("#overallText").textContent = `0 / ${fmtBytes(state.totalBytes)}`;
+
+      try{
+        await repl.flashFiles(pyFiles, {
+          dstResolver: (file)=>{
+            const src = file.webkitRelativePath ? file.webkitRelativePath : file.name;
+            return baseNameFromPath(src); // ROOT (/filename.py) — overwrite
+          },
+          chunkSize,
+          autoReset,
+          onOverallProgress: ({written, total})=>{
+            $("#progOverall").value = total ? (written/total*100) : 0;
+            $("#overallText").textContent = `${fmtBytes(written)} / ${fmtBytes(total)}`;
+          }
+        });
+      }catch(err){
+        log(`\n[ERR] ${err?.message || err}\n`);
+      }
+    });
+
+    setConn(false);
+  </script>
+</body>
+</html>

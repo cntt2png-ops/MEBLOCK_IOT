@@ -1,0 +1,41 @@
+{
+  "name":"MEBLOCK MicroPython Firmware",
+  "version":"1.0.0",
+  "builds":[
+    {
+      "board":"ESP32-S3 Super Mini",
+      "chipFamily":"ESP32-S3",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC_S3-20250911-v1.26.1.bin", "offset":0}
+      ]
+    },
+
+    {
+      "board":"ESP32-S3-DevKitC-1",
+      "chipFamily":"ESP32-S3",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC_S3-SPIRAM_OCT-20250911-v1.26.1.bin", "offset":0}
+      ]
+    },
+
+    {
+      "board":"ESP32-WROOM-32",
+      "chipFamily":"ESP32",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC-20250911-v1.26.1.bin", "offset":4096}
+      ]
+    },
+
+    {
+      "board":"ESP32-C3-Super Mini",
+      "chipFamily":"ESP32-C3",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC_C3-20250911-v1.26.1.bin","offset":0}
+      ]
+    }
+  ]
+}

@@ -1,9 +1,5 @@
 # boot.py - ESP32-S3 MicroPython boot script
 # Simple boot with BLE UART REPL
-#
-# Features:
-#   - BLE UART REPL (official MicroPython style)
-#   - Optional: Double-Reset Detection for recovery
 
 import micropython
 import os
