@@ -224,7 +224,7 @@ def connect_meblock(port=1883):
 def connect_dashboard(username):
     """
     Subscribe wildcard để bỏ block Subscribe Channel:
-      meblock/{username}/+/command
+      meblock/{username}/+/
     """
     if not _client:
         return False
@@ -366,30 +366,5 @@ def send_value(channel, value, include_channel_field=False):
     payload = {"value": value}
     if include_channel_field:
         payload["channel"] = ch
-
-    return _publish(topic, payload)
-
-
-def send_sensor_data(channel, temperature=None, humidity=None, battery=None, timestamp=None, extra=None):
-    """
-    ESP -> Frontend (topic /data). Payload dạng sensor: {temperature, humidity, battery, timestamp, ...}
-    """
-    if not _dashboard["username"]:
-        raise RuntimeError("Chua chon dashboard. Goi connect_dashboard(username) truoc.")
-
-    ch = str(channel)
-    topic = "meblock/{}/{}/data".format(_dashboard["username"], ch)
-
-    payload = {}
-    if temperature is not None:
-        payload["temperature"] = temperature
-    if humidity is not None:
-        payload["humidity"] = humidity
-    if battery is not None:
-        payload["battery"] = battery
-    if timestamp is not None:
-        payload["timestamp"] = timestamp
-    if isinstance(extra, dict):
-        payload.update(extra)
 
     return _publish(topic, payload)

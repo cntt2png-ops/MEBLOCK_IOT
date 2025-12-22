@@ -21,7 +21,7 @@
     },
 
     {
-      "board":"ESP32-WROOM-32",
+      "board":"ESP32-WROOM 32",
       "chipFamily":"ESP32",
       "parts":  [
         {
