@@ -48,10 +48,10 @@
       "board": "ESSP32-WROOM-32",
       "chipFamily": "ESP32",
       "parts": [
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
         { "path": "boot_app0.bin", "offset": 57344 },
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
       ]
     }
   ]
