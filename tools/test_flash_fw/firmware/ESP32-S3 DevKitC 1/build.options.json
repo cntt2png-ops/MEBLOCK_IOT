@@ -6,5 +6,5 @@
   "fqbn": "esp32:esp32:esp32s3-octal:UploadSpeed=921600,USBMode=hwcdc,CDCOnBoot=default,MSCOnBoot=default,DFUOnBoot=default,UploadMode=default,CPUFreq=240,FlashMode=dio,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,DebugLevel=none,PSRAM=opi,LoopCore=1,EventsCore=1,EraseFlash=none,JTAGAdapter=default",
   "hardwareFolders": "c:\\Users\\LENOVO\\AppData\\Local\\Arduino15\\packages",
   "otherLibrariesFolders": "c:\\Users\\LENOVO\\Documents\\Arduino\\libraries",
-  "sketchLocation": "E:\\Thong\\Optimize\\newcore_v2_s3_keep_protocol_binarysafe_v3_reasm"
+  "sketchLocation": "E:\\Thong\\Optimize\\core_v1"
 }

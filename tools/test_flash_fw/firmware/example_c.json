@@ -7,40 +7,40 @@
       "board": "ESP32-S3 Super Mini",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./ESP32-S3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-S3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 Super Mini/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 Super Mini/core_v1.ino.partitions.bin", "offset": 32768 },
         { "path": "./ESP32-S3 Super Mini/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-S3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-S3 Super Mini/core_v1.ino.bin", "offset": 65536 }
       ]
     },
     {
       "board": "ESP32-S3 DevKitC 1 (N16R8)",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./ESP32-S3 DevKitC 1/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-S3 DevKitC 1/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.partitions.bin", "offset": 32768 },
         { "path": "./ESP32-S3 DevKitC 1/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-S3 DevKitC 1/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.bin", "offset": 65536 }
       ]
     }, 
     {
       "board": "ESP32-C3 Super Mini",
       "chipFamily": "ESP32-C3",
       "parts": [
-        { "path": "./ESP32-C3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-C3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-C3 Super Mini/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-C3 Super Mini/core_v1.ino.partitions.bin", "offset": 32768 },
         { "path": "./ESP32-C3 Super Mini/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-C3 Super Mini/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-C3 Super Mini/core_v1.ino.bin", "offset": 65536 }
       ]
     }, 
     {
       "board": "YoloUno/ESP32-S3 WROOM 1",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 0 },
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+        { "path": "./YoloUno/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./YoloUno/core_v1.ino.partitions.bin", "offset": 32768 },
         { "path": "./YoloUno/boot_app0.bin", "offset": 57344 },
-        { "path": "./YoloUno/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+        { "path": "./YoloUno/core_v1.ino.bin", "offset": 65536 }
       ]
     },
 
@@ -48,11 +48,21 @@
     "board": "ESP32-WROOM-32",
     "chipFamily": "ESP32",
     "parts": [
-      { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bootloader.bin", "offset": 4096 },
-      { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.partitions.bin", "offset": 32768 },
+      { "path": "./ESP32-WROOM 32/core_v1.ino.bootloader.bin", "offset": 4096 },
+      { "path": "./ESP32-WROOM 32/core_v1.ino.partitions.bin", "offset": 32768 },
       { "path": "boot_app0.bin", "offset": 57344 },
-      { "path": "./ESP32-WROOM 32/newcore_v2_s3_keep_protocol_binarysafe_v3_reasm.ino.bin", "offset": 65536 }
+      { "path": "./ESP32-WROOM 32/core_v1.ino.bin", "offset": 65536 }
     ]
-  }
+  }, 
+    {
+      "board": "ESP32-S3 WROOM 1",
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 WROOM 1/boot_app0.bin", "offset": 57344 },
+        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.bin", "offset": 65536 }
+      ]
+    }
   ]
 }
