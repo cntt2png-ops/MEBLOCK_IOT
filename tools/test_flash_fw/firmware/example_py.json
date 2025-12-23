@@ -12,7 +12,7 @@
     },
 
     {
-      "board":"ESP32-S3-DevKitC-1",
+      "board":"ESP32-S3 DevKitC 1 (N16R8)",
       "chipFamily":"ESP32-S3",
       "parts":  [
         {
@@ -35,6 +35,14 @@
       "parts":  [
         {
           "path":"ESP32_GENERIC_C3-20250911-v1.26.1.bin","offset":0}
+      ]
+    }, 
+    {
+      "board":"YoloUno/ESP32-S3 WROOM 1",
+      "chipFamily":"ESP32-S3",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC_S3-20250911-v1.26.1.bin", "offset":0}
       ]
     }
   ]
