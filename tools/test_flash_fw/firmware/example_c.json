@@ -1,26 +1,25 @@
 {
   "name": "MEBLOCK C Factory Firmware",
   "version": "5.0.0",
-  "new_install_prompt_erase": true,
   "builds": [
     {
-      "board": "ESP32-S3 Super Mini",
+      "board": "ESP32-S3 Super Mini (2MB QSPI PSRAM)",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./ESP32-S3 Super Mini/core_v1.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-S3 Super Mini/core_v1.ino.partitions.bin", "offset": 32768 },
-        { "path": "./ESP32-S3 Super Mini/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-S3 Super Mini/core_v1.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-S3 Super Mini (2MB QSPI PSRAM)/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 Super Mini (2MB QSPI PSRAM)/core_v1.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 Super Mini (2MB QSPI PSRAM)/boot_app0.bin", "offset": 57344 },
+        { "path": "./ESP32-S3 Super Mini (2MB QSPI PSRAM)/core_v1.ino.bin", "offset": 65536 }
       ]
     },
     {
       "board": "ESP32-S3 DevKitC 1 (N16R8)",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.partitions.bin", "offset": 32768 },
-        { "path": "./ESP32-S3 DevKitC 1/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-S3 DevKitC 1/core_v1.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-S3 DevKitC 1 (N16R8)/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 DevKitC 1 (N16R8)/core_v1.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 DevKitC 1 (N16R8)/boot_app0.bin", "offset": 57344 },
+        { "path": "./ESP32-S3 DevKitC 1 (N16R8)/core_v1.ino.bin", "offset": 65536 }
       ]
     }, 
     {
@@ -34,13 +33,13 @@
       ]
     }, 
     {
-      "board": "YoloUno/ESP32-S3 WROOM 1",
+      "board": "YoloUno (ESP32-S3 WROOM 1 4MB FLASH)",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./YoloUno/core_v1.ino.bootloader.bin", "offset": 0 },
-        { "path": "./YoloUno/core_v1.ino.partitions.bin", "offset": 32768 },
-        { "path": "./YoloUno/boot_app0.bin", "offset": 57344 },
-        { "path": "./YoloUno/core_v1.ino.bin", "offset": 65536 }
+        { "path": "./YoloUno (ESP32-S3 WROOM 1 4MB FLASH)/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./YoloUno (ESP32-S3 WROOM 1 4MB FLASH)/core_v1.ino.partitions.bin", "offset": 32768 },
+        { "path": "./YoloUno (ESP32-S3 WROOM 1 4MB FLASH)/boot_app0.bin", "offset": 57344 },
+        { "path": "./YoloUno (ESP32-S3 WROOM 1 4MB FLASH)/core_v1.ino.bin", "offset": 65536 }
       ]
     },
 
@@ -50,18 +49,18 @@
     "parts": [
       { "path": "./ESP32-WROOM 32/core_v1.ino.bootloader.bin", "offset": 4096 },
       { "path": "./ESP32-WROOM 32/core_v1.ino.partitions.bin", "offset": 32768 },
-      { "path": "boot_app0.bin", "offset": 57344 },
+      { "path": "./ESP32-WROOM 32/boot_app0.bin", "offset": 57344 },
       { "path": "./ESP32-WROOM 32/core_v1.ino.bin", "offset": 65536 }
     ]
   }, 
     {
-      "board": "ESP32-S3 WROOM 1",
+      "board": "ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)",
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.bootloader.bin", "offset": 0 },
-        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.partitions.bin", "offset": 32768 },
-        { "path": "./ESP32-S3 WROOM 1/boot_app0.bin", "offset": 57344 },
-        { "path": "./ESP32-S3 WROOM 1/core_v1.ino.bin", "offset": 65536 }
+        { "path": "./ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)/core_v1.ino.bootloader.bin", "offset": 0 },
+        { "path": "./ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)/core_v1.ino.partitions.bin", "offset": 32768 },
+        { "path": "./ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)/boot_app0.bin", "offset": 57344 },
+        { "path": "./ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)/core_v1.ino.bin", "offset": 65536 }
       ]
     }
   ]

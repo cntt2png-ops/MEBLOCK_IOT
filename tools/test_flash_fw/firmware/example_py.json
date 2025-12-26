@@ -38,11 +38,19 @@
       ]
     }, 
     {
-      "board":"YoloUno/ESP32-S3 WROOM 1",
+      "board":"YoloUno/ESP32-S3 WROOM 1 4MB FLASH",
       "chipFamily":"ESP32-S3",
       "parts":  [
         {
           "path":"ESP32_GENERIC_S3-20250911-v1.26.1.bin", "offset":0}
+      ]
+    }, 
+    {
+      "board":"ESP32-S3 WROOM 1 (16MB FLASH - 8MB PSRAM)",
+      "chipFamily":"ESP32-S3",
+      "parts":  [
+        {
+          "path":"ESP32_GENERIC_S3-SPIRAM_OCT-20250911-v1.26.1.bin", "offset":0}
       ]
     }
   ]
