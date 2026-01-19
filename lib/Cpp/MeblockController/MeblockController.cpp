@@ -1,14 +1,4 @@
 #include <WiFi.h>
-#if __has_include(<esp_arduino_version.h>)
-#include <esp_arduino_version.h>
-#endif
-#ifndef ESP_ARDUINO_VERSION
-#define ESP_ARDUINO_VERSION 0
-#endif
-#ifndef ESP_ARDUINO_VERSION_VAL
-#define ESP_ARDUINO_VERSION_VAL(major, minor, patch) (((major) << 16) | ((minor) << 8) | (patch))
-#endif
-
 #include "MeblockController.h"
 #include <esp_now.h>
 #include "esp_wifi.h"
@@ -824,25 +814,11 @@ void detectDoubleClick() {
   lastSWR = currSWR;
 }
 
-// NOTE (Arduino-ESP32 core 3.x / IDF 5.x):
-//   The ESP-NOW send callback signature changed between core versions.
-//   - Core <= 3.0.x:   void (*)(const uint8_t *mac_addr, esp_now_send_status_t status)
-//   - Core >= 3.3.x:   void (*)(const wifi_tx_info_t *info, esp_now_send_status_t status)
-//
-// We keep compatibility with both using ESP_ARDUINO_VERSION.
-#if (ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 3, 0))
-static void OnSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
-  Serial.print("ESP-NOW send: ");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
-  (void)info;
-}
-#else
 static void OnSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("ESP-NOW send: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
   (void)mac_addr;
 }
-#endif
 
 void setupESPNow() {
   WiFi.mode(WIFI_STA);
