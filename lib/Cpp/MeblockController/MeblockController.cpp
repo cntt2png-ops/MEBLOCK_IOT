@@ -815,9 +815,9 @@ void detectDoubleClick() {
 }
 
 static void OnSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  (void)mac_addr;
   Serial.print("ESP-NOW send: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
-  (void)mac_addr;
 }
 
 void setupESPNow() {
