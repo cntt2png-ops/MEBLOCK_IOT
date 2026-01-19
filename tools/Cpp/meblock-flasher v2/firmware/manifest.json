@@ -4,11 +4,11 @@
   "new_install_prompt_erase": true,
   "builds": [
     {
-      "chipFamily": "ESP32-S3",
+      "chipFamily": "ESP32-C3",
       "parts": [
         {
-          "path": "Oled_test.ino.bin",
-          "offset": 3211264
+          "path": "final.bin",
+          "offset": 1376256
         }
       ]
     }

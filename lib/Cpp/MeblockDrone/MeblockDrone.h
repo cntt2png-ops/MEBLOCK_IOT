@@ -7,7 +7,7 @@
 // Lưu ý: pins (motor/I2C/...) được ẩn trong thư viện để giữ logic drone gốc.
 struct MeblockDroneConfig {
   // SoftAP Web UI
-  const char* apSsid = "DragonFly Web Tuning";
+  const char* apSsid = "MEDrone Web Tuning";
   const char* apPass = "12345678";
   IPAddress   apIP   = IPAddress(192, 168, 4, 1);
 
