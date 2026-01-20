@@ -814,9 +814,21 @@ void detectDoubleClick() {
   lastSWR = currSWR;
 }
 
+// Arduino-ESP32 core 3.0.7 (ESP-IDF v5.1) expects send callback:
+//   void (*)(const uint8_t *mac_addr, esp_now_send_status_t status)
+// (this core DOES NOT provide wifi_tx_info_t).
 static void OnSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  (void)mac_addr;
-  Serial.print("ESP-NOW send: ");
+  Serial.print("ESP-NOW send to ");
+  if (mac_addr) {
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+             mac_addr[0], mac_addr[1], mac_addr[2],
+             mac_addr[3], mac_addr[4], mac_addr[5]);
+    Serial.print(macStr);
+  } else {
+    Serial.print("(null)");
+  }
+  Serial.print(" : ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
 }
 
@@ -842,6 +854,9 @@ void setupESPNow() {
 
   esp_now_peer_info_t peerInfo = {};
   memcpy(peerInfo.peer_addr, ReceiverMAC, 6);
+  // Keep defaults explicit for stability on ESP32-C3.
+  peerInfo.channel = 0;            // 0 = use current channel
+  peerInfo.ifidx   = WIFI_IF_STA;  // send from STA interface
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
