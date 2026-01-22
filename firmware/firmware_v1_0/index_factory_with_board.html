@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>MEBLOCK Factory Flasher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- ESP Web Tools – chỉ dùng để nạp firmware -->
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
+  </script>
+
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1d283a 0, #020617 52%);
+      color: #f9fafb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .card {
+      max-width: 560px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.98);
+      border-radius: 20px;
+      padding: 22px 22px 24px;
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(148, 163, 184, 0.15);
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .subtitle { margin: 0 0 10px; font-size: 13px; color: #9ca3af; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #020617;
+      color: #9ca3af;
+      border: 1px solid #1f2937;
+      margin-bottom: 12px;
+    }
+    .steps { margin: 10px 0 14px; font-size: 13px; color: #e5e7eb; }
+    .steps li { margin: 4px 0; }
+    .field { margin: 10px 0 12px; }
+    .label { display:block; font-size:12px; color:#9ca3af; margin-bottom:6px; }
+    select, input[type=text]{
+      width:100%;
+      background:#020617;
+      border:1px solid #1f2937;
+      color:#e5e7eb;
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      font-size: 13px;
+    }
+    .row { display:flex; gap:10px; align-items:center; }
+    .row > * { flex: 1; }
+    button.primary {
+      width: 100%;
+      justify-content: center;
+      border-radius: 999px;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      background: #22c55e;
+      color: #022c22;
+      box-shadow: 0 10px 22px rgba(34, 197, 94, 0.35);
+      transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+    }
+    button.primary:hover {
+      background: #16a34a;
+      box-shadow: 0 10px 26px rgba(34, 197, 94, 0.4);
+      transform: translateY(-0.5px);
+    }
+    button.primary:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+      background: #1f2937;
+      color: #9ca3af;
+      box-shadow: none;
+    }
+    .note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #9ca3af;
+      line-height: 1.5;
+    }
+    .hint {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #e5e7eb;
+      background: rgba(2,6,23,.65);
+      border: 1px solid rgba(31,41,55,.9);
+      border-radius: 12px;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+    }
+    code {
+      font-size: 12px;
+      background: rgba(2, 6, 23, 0.9);
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>MEBLOCK Factory Flasher</h1>
+    <p class="subtitle">
+      Tool đơn giản để nạp firmware theo <b>board</b> trong manifest.<br/>
+      Khi chọn board, webtool sẽ lọc đúng <code>build</code> có <code>build.board</code> tương ứng.
+    </p>
+
+    <div class="badge">
+      ⚠️ Full flash • Có thể xoá toàn bộ dữ liệu trên board
+    </div>
+
+    <ol class="steps">
+      <li>Kết nối board (USB).</li>
+      <li>Mở bằng Chrome / Edge trên <code>https://</code> hoặc <code>http://localhost</code>.</li>
+      <li>Chọn <b>Board</b> → nhấn nút nạp firmware.</li>
+    </ol>
+
+    <div class="field">
+      <span class="label">Manifest firmware (JSON)</span>
+      <div class="row">
+        <input id="manifestUrl" type="text" value="./firmware/example_c.json" />
+        <button id="btnLoad" class="primary" style="max-width:140px">Load</button>
+      </div>
+      <div class="hint">
+        Manifest phải có dạng:
+        <code>{"builds":[{"board":"S3_STD","chipFamily":"ESP32-S3","parts":[{"path":"x.bin","offset":0}]}]}</code>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">Chọn Board</span>
+      <select id="boardSelect" disabled>
+        <option value="">(Load manifest trước)</option>
+      </select>
+      <div class="hint" id="boardHint"></div>
+    </div>
+
+    <!-- NÚT NẠP (manifest được set động theo board) -->
+    <esp-web-install-button id="installBtn" manifest="">
+      <button id="flashBtn" slot="activate" class="primary" disabled>
+        NẠP FIRMWARE THEO BOARD
+      </button>
+      <span slot="unsupported">
+        Trình duyệt không hỗ trợ Web Serial. Hãy dùng Chrome hoặc Edge.
+      </span>
+      <span slot="not-allowed">
+        Cần chạy trên HTTPS hoặc http://localhost.
+      </span>
+    </esp-web-install-button>
+
+    <div id="status" class="status">Status: idle</div>
+
+    <div class="note">
+      <b>Lưu ý:</b><br/>
+      • Nếu wizard hỏi <i>Erase device</i>, nên tick để board sạch hoàn toàn.<br/>
+      • Khi lọc manifest theo board, tool sẽ tự đổi <code>parts[].path</code> sang URL tuyệt đối để tải .bin đúng.<br/>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    let rawManifest = null;
+    let rawManifestUrl = null;
+    let blobUrl = null;
+
+    function setStatus(text){
+      $("status").textContent = "Status: " + text;
+    }
+
+    function safeStr(x){ return (x === null || x === undefined) ? "" : String(x); }
+
+    function normalizeBuildBoard(build){
+      // chỉ dùng 1 trường phân biệt: build.board
+      const b = safeStr(build && build.board).trim();
+      return b;
+    }
+
+    function getBoardsFromManifest(m){
+      const builds = Array.isArray(m && m.builds) ? m.builds : [];
+      const boards = [];
+      const seen = new Set();
+      for(const b of builds){
+        const key = normalizeBuildBoard(b);
+        if(!key) continue;
+        if(seen.has(key)) continue;
+        seen.add(key);
+        boards.push(key);
+      }
+      return boards.sort((a,b)=>a.localeCompare(b,"en"));
+    }
+
+    function absolutizePartsPaths(manifestObj, baseUrl){
+      // Khi dùng blob: relative path không còn resolve được → đổi parts[].path thành absolute URL
+      const builds = Array.isArray(manifestObj && manifestObj.builds) ? manifestObj.builds : [];
+      for(const build of builds){
+        if(!Array.isArray(build.parts)) continue;
+        for(const part of build.parts){
+          if(!part || !part.path) continue;
+          try{
+            part.path = new URL(part.path, baseUrl).href;
+          }catch(e){
+            // ignore
+          }
+        }
+      }
+      return manifestObj;
+    }
+
+    function setInstallManifest(url){
+      const el = $("installBtn");
+      el.setAttribute("manifest", url);
+      try { el.manifest = url; } catch(e) {}
+    }
+
+    function revokeBlob(){
+      if(blobUrl){
+        try { URL.revokeObjectURL(blobUrl); } catch(e) {}
+        blobUrl = null;
+      }
+    }
+
+    function buildFilteredManifest(board){
+      const m = rawManifest;
+      const builds = Array.isArray(m && m.builds) ? m.builds : [];
+      const filtered = builds.filter(b => normalizeBuildBoard(b) === board);
+
+      const out = Object.assign({}, m, { builds: filtered });
+
+      const baseUrl = new URL(rawManifestUrl, location.href);
+      absolutizePartsPaths(out, baseUrl);
+
+      return out;
+    }
+
+    async function loadManifest(){
+      revokeBlob();
+      $("flashBtn").disabled = true;
+      $("boardSelect").disabled = true;
+      $("boardSelect").innerHTML = '<option value="">(Loading...)</option>';
+      $("boardHint").textContent = "";
+      setStatus("loading manifest...");
+
+      const url = $("manifestUrl").value.trim();
+      if(!url){
+        setStatus("manifest url is empty");
+        $("boardSelect").innerHTML = '<option value="">(Nhập manifest URL)</option>';
+        return;
+      }
+
+      try{
+        const res = await fetch(url, { cache: "no-store" });
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        const m = await res.json();
+
+        rawManifest = m;
+        rawManifestUrl = url;
+
+        const boards = getBoardsFromManifest(m);
+        if(!boards.length){
+          $("boardSelect").innerHTML = '<option value="">(Không thấy builds[].board trong manifest)</option>';
+          setStatus("no builds[].board found");
+          return;
+        }
+
+        $("boardSelect").disabled = false;
+        $("boardSelect").innerHTML = boards.map(b => '<option value="' + b + '">' + b + '</option>').join("");
+        $("boardHint").textContent = "Tìm thấy " + boards.length + " board trong manifest.";
+
+        $("boardSelect").value = boards[0];
+        applyBoard(boards[0]);
+      }catch(err){
+        rawManifest = null;
+        rawManifestUrl = null;
+        $("boardSelect").innerHTML = '<option value="">(Load manifest lỗi)</option>';
+        setStatus("error: " + (err && err.message ? err.message : err));
+      }
+    }
+
+    function applyBoard(board){
+      if(!rawManifest || !rawManifestUrl){
+        setStatus("manifest not loaded");
+        return;
+      }
+      revokeBlob();
+      setStatus("selected board: " + board);
+
+      const filteredManifest = buildFilteredManifest(board);
+      const jsonText = JSON.stringify(filteredManifest, null, 2);
+      blobUrl = URL.createObjectURL(new Blob([jsonText], { type: "application/json" }));
+
+      setInstallManifest(blobUrl);
+      $("flashBtn").disabled = false;
+    }
+
+    $("btnLoad").addEventListener("click", loadManifest);
+    $("boardSelect").addEventListener("change", (e)=>applyBoard(e.target.value));
+
+    // Auto load on start
+    loadManifest();
+  </script>
+</body>
+</html>
