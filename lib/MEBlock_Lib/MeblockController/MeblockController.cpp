@@ -15,7 +15,7 @@
 #define SWR_PIN 5 //5 26
 
 // ==== WiFi Config ====
-char ssid[33] = "Controller Calibration";
+char ssid[33] = "MEBlock Controller V1";
 char password[65] = "12345678";
 IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
