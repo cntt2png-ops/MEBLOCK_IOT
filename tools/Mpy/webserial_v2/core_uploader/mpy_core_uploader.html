@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MEBLOCK • Upload Core .py (Folder → ROOT) • Minimal</title>
+  <style>
+    :root{
+      --panel:#121826; --muted:#9aa4b2; --text:#e5e7eb; --brand:#4f46e5;
+      --ok:#10b981; --warn:#f59e0b; --err:#ef4444; --border:#1f2937;
+      --radius:16px; --shadow:0 10px 35px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(120deg,#0b0e14,#10131b);color:var(--text);
+      font:14px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:18px 22px;
+      position:sticky;top:0;background:rgba(11,14,20,.7);backdrop-filter:blur(6px);
+      border-bottom:1px solid var(--border);z-index:10}
+    header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+    .badge{font-size:11px;color:#9ca3af;border:1px solid var(--border);padding:2px 8px;border-radius:999px}
+    .wrap{max-width:760px;margin:22px auto;padding:0 16px 60px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .sec{padding:16px}
+    .sec h2{margin:0 0 12px;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .tiny{font-size:12px;color:var(--muted)}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input[type=text]{width:100%;background:#0f1422;color:var(--text);border:1px solid #263041;
+      border-radius:12px;padding:10px 12px;outline:none}
+    input[type=file]{width:100%}
+    button{appearance:none;border:1px solid #2a3550;background:#192038;color:var(--text);
+      padding:10px 14px;border-radius:12px;cursor:pointer}
+    button.primary{background:var(--brand);border-color:transparent}
+    button.good{background:#0b2d24;border-color:#0b2d24;color:#a7f3d0}
+    button.warn{background:#2b2410;border-color:#2b2410;color:#fde68a}
+    button.danger{background:#2b1618;border-color:#2b1618;color:#fecaca}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .status{display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#6b7280}
+    .dot.ok{background:var(--ok)}
+    .dot.bad{background:var(--err)}
+    .banner{background:#1f2937;color:#e5e7eb;border-left:4px solid var(--warn);padding:10px 12px;
+      border-radius:8px;margin:0 0 12px}
+    .log{background:#0a0f1a;border-top:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius);
+      max-height:360px;overflow:auto;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      white-space:pre-wrap}
+    progress{width:100%;height:12px}
+    hr{border:0;border-top:1px solid var(--border);margin:14px 0}
+    .hide{display:none !important}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>MEBLOCK • Upload core MicroPython (.py) vào ROOT (/)</h1>
+      <span class="badge">folder-only • overwrite • minimal UI</span>
+    </div>
+    <div class="status"><span id="connDot" class="dot"></span><span id="connLabel">Disconnected</span></div>
+  </header>
+
+  <div class="wrap">
+    <div id="insecureBanner" class="banner hide">
+      Web Serial cần chạy trên <b>HTTPS</b> hoặc <b>localhost</b>.
+      Ví dụ: <code>python -m http.server 8000</code> rồi mở <code>http://localhost:8000</code>.
+    </div>
+
+    <div class="card">
+      <div class="sec">
+        <h2>1) Kết nối Serial</h2>
+
+        <label>Baud rate</label>
+        <input id="baud" type="text" value="115200" />
+
+        <div class="row" style="margin-top:10px">
+          <button id="btnConnect" class="primary">Chọn cổng & Connect</button>
+          <button id="btnDisconnect">Disconnect</button>
+          <button id="btnStop" class="warn">Stop (CTRL-C)</button>
+          <button id="btnReset" class="warn">Reset</button>
+        </div>
+        <div class="tiny">Lưu ý: đóng Arduino Serial Monitor / Thonny nếu đang chiếm cổng.</div>
+
+        <hr/>
+
+        <h2>2) Chọn thư mục core (.py)</h2>
+        <label>Chọn thư mục (tool sẽ lấy toàn bộ file .py bên trong và nạp vào /)</label>
+        <input id="pickFolder" type="file" webkitdirectory directory multiple />
+
+        <div class="row" style="margin-top:10px">
+          <label class="tiny" style="margin:0">
+            <input type="checkbox" id="autoReset" checked style="vertical-align:middle;margin-right:6px">
+            Auto reset sau khi nạp xong
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <label class="tiny" style="margin:0">
+            Chunk size (bytes):
+            <input id="chunkSize" type="text" value="384" style="width:120px;margin-left:8px">
+          </label>
+        </div>
+
+        <hr/>
+
+        <h2>3) Flash</h2>
+        <div class="row">
+          <button id="btnFlash" class="good">Flash folder → ROOT</button>
+          <button id="btnAbort" class="danger">Abort</button>
+          <button id="btnClear" class="tiny" style="margin-left:auto">Clear log</button>
+        </div>
+
+        <label style="margin-top:14px">Overall progress</label>
+        <progress id="progOverall" max="100" value="0"></progress>
+        <div class="tiny" id="overallText">0 / 0 bytes</div>
+      </div>
+
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <!-- TÁCH JS RA FILE RIÊNG -->
+  <script type="module" src="./mpy_core_uploader.js"></script>
+</body>
+</html>
