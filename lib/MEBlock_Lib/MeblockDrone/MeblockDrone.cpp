@@ -72,16 +72,6 @@ int integralLimit = 10;
 float range_altitude = 15;
 float maxRateChange = 1; // m/s
 
-// -------- Speed tuning (exposed to Web UI) --------
-float maxAngleDeg = 30.0f;        // deg, max roll/pitch angle command
-float maxYawRateDegS = 90.0f;     // deg/s, max yaw rate command
-float maxAltRateMps = 5.0f;       // m/s, max climb/descent rate command
-float rpResponse = 1.0f;          // roll/pitch response scale
-float yawResponse = 1.0f;         // yaw response scale
-float altResponse = 1.0f;         // altitude rate response scale
-float rpExpo = 0.0f;              // 0..1 (higher = softer around center)
-float yawExpo = 0.0f;             // 0..1
-float altExpo = 0.0f;             // 0..1
 float kff_roll = 0.5; // FeedForward Roll
 float kff_pitch = 0.5; // FeedForward Pitch
 float kff_yaw = 0.5; // FeedForward Yaw
@@ -227,674 +217,505 @@ typedef struct JoyData {
 } JoyData;
 
 JoyData incomingJoystickData;
+uint8_t lastWebCommand = 255;
+
+
 // *************************************************************  HTML  ************************************************************* //
 
 String htmlForm(const char* message = "") {
   String mac = getMacAddress();
   mac.toUpperCase();
 
-  String html = R"HTML(
+  String html = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MEBlock Drone Web Tuning V1</title>
+  <title>MEBlock Drone V1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root{
       --bg:#0e2a52;
       --panel:#123a6b;
-      --card:#123a6b;
-      --line:#2e5b99;
       --text:#ffffff;
       --muted:rgba(255,255,255,.72);
       --accent:#2f6bff;
-      --accent2:#1f49b8;
-      --bad:#ff4d6d;
       --good:#2ee59d;
+      --bad:#ff4d6d;
       --btn:#1a4a8d;
       --btn2:#1e5aa8;
     }
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
-    .wrap{max-width:1180px;margin:0 auto;padding:14px}
-    .top{
-      display:flex;gap:10px;align-items:center;justify-content:space-between;
-      padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);
-    }
-    .title{font-weight:800;letter-spacing:.2px}
-    .sub{color:var(--muted);font-size:12px}
-    .badge{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#0b1430;color:var(--muted)}
-    .msg{
-      margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#0b1430;
-      padding:10px 12px;color:var(--muted);display:none
-    }
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+    .wrap{max-width:1020px;margin:0 auto;padding:16px}
+    .top{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .brand{font-weight:800;font-size:18px;letter-spacing:.3px}
+    .meta{font-size:12px;color:var(--muted)}
+    .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);font-size:12px}
+    .msg{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(46,91,153,.25);border:1px solid rgba(46,91,153,.45);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
 
-    .tabs{
-      margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;
-    }
-    .tabbtn{
-      border:1px solid var(--line);
-      background:#0b1430;
-      color:var(--muted);
-      padding:8px 10px;
-      border-radius:10px;
-      cursor:pointer;
-      font-weight:700;
-    }
-    .tabbtn.active{
-      background:var(--btn2);
-      color:#fff;
-      border-color:rgba(47,107,255,.55);
-    }
+    .stack{display:flex;flex-direction:column;gap:12px}
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px}
+    h3{margin:0 0 10px 0;font-size:14px}
 
-    .grid{margin-top:12px;display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
-    @media(min-width:760px){ .grid{grid-template-columns: minmax(0,1fr) 380px;} }
-    .rightStack{display:flex;flex-direction:column;gap:12px}
+    .cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .cardhead h3{margin:0}
 
-    .card{
-      border:1px solid var(--line);
-      border-radius:12px;
-      background:var(--card);
-      padding:12px;
-    }
-    .card h3{
-      margin:0 0 10px 0;
-      font-size:14px;
-      letter-spacing:.2px;
-      color:#fff;
-    }
-    .section{margin-top:12px}
-    .section h4{margin:0 0 8px 0;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
-    .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media(min-width:860px){ .fields{grid-template-columns:1fr 1fr 1fr;} }
-    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    .pname{font-weight:900;color:#fff;letter-spacing:.2px}
-    input[type="number"]{
-      width:100%;
-      padding:10px 10px;
-      border-radius:10px;
-      border:1px solid var(--line);
-      outline:none;
-      background:#0b1430;
-      color:#fff;
-      font-weight:700;
-    }
-    input[type="number"]:focus{border-color:rgba(47,107,255,.7)}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .btn{
-      border:1px solid var(--line);
-      background:var(--btn);
-      color:#fff;
-      padding:10px 12px;
-      border-radius:10px;
-      cursor:pointer;
-      font-weight:800;
-    }
-    .btn.primary{background:var(--accent2);border-color:rgba(47,107,255,.6)}
-    .btn.danger{background:#3b1a26;border-color:rgba(255,77,109,.55)}
-    .hint{color:var(--muted);font-size:12px;line-height:1.35}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .teleGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-    .teleItem{padding:10px;border:1px solid var(--line);border-radius:10px;background:#0b1430}
-    .teleItem .k{color:var(--muted);font-size:12px}
-    .teleItem .v{font-size:18px;font-weight:900;margin-top:6px}
-    .hide{display:none}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 6px}
+    input{width:100%;padding:10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.18);color:#fff;outline:none}
+    input:focus{border-color:rgba(47,107,255,.9)}
+    input[readonly]{opacity:.9}
+
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    @media(max-width:720px){.row3{grid-template-columns:1fr}}
+
+    .btn{display:inline-block;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:var(--btn);color:#fff;text-decoration:none;cursor:pointer;font-size:13px}
+    .btn:hover{background:var(--btn2)}
+    .btnline{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+    .btn.btn-save{background:var(--good);color:#04251a;font-weight:900;border-color:rgba(255,255,255,.10);box-shadow:0 8px 18px rgba(46,229,157,.18)}
+    .btn.btn-save:hover{filter:brightness(1.03)}
+    .btn.btn-danger{background:var(--bad);font-weight:900}
+    .btn.btn-danger:hover{filter:brightness(1.03)}
+
+    .btn.btn-lang{padding:6px 10px;border-radius:999px;font-size:12px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.18)}
+    .btn.btn-lang:hover{background:rgba(0,0,0,.26)}
+
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.16);cursor:pointer;font-size:12px;color:var(--muted)}
+    .tab.active{background:rgba(47,107,255,.25);border-color:rgba(47,107,255,.6);color:#fff}
+
+    .telemetry-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    @media(max-width:980px){.telemetry-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(max-width:520px){.telemetry-grid{grid-template-columns:1fr;}}
+    .tbox{background:rgba(0,0,0,.12);padding:10px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
+    .tbox .lbl{font-size:11px;color:var(--muted)}
+    .tbox .val{margin-top:4px;font-size:18px;font-weight:800;color:#00ffee;font-family:ui-monospace,Menlo,Consolas,monospace}
+
+    .hint{font-size:12px;color:var(--muted);line-height:1.35}
+    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+    .dim{opacity:.65}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
       <div>
-        <div class="title">MEBlock Drone Web Tuning V1</div>
-        <div class="sub">MAC: <span class="mono" id="mac">{{MAC}}</span></div>
+        <div class="brand">MEBlock Drone V1</div>
+        <div class="meta">MAC: <span class="mono">)rawliteral" + mac + R"rawliteral(</span></div>
       </div>
-      <div class="badge mono" id="ap">AP: 192.168.4.1</div>
+      <div class="right">
+        <div class="pill">AP: <span class="mono">192.168.4.1</span></div>
+        <button class="btn btn-lang" id="langBtn" type="button" title="EN/VI">EN/VI</button>
+      </div>
     </div>
 
-    <div class="msg" id="msg">{{MSG}}</div>
-
-    <div class="tabs">
-      <button class="tabbtn active" data-tab="pid">PID</button>
-      <button class="tabbtn" data-tab="stability">Độ ổn định</button>
-      <button class="tabbtn" data-tab="speed">Tốc độ</button>
-      <button class="tabbtn" data-tab="load">Tải</button>
-    </div>
+    )rawliteral" + (String(message).length() ? String("<div class='msg' id='serverMsg' style='display:none'>") + message + "</div>" : "") + R"rawliteral(
 
     <div class="grid">
-      <div class="left">
+      <div class="stack">
         <div class="card">
-        <form id="tuneForm" action="/save" method="POST">
-          <!-- PID -->
-          <div class="tab" id="tab-pid">
-            <h3>PID (tổng)</h3>
-
-            <div class="section">
-              <h4>Rate (quay)</h4>
-              <div class="hint">P: phản ứng nhanh • I: giảm lệch kéo dài • D: giảm rung/overshoot (D quá lớn dễ “rít”).</div>
-              <div class="fields">
-                <div><label>Roll P</label><input name="pRoll_rate" type="number" step="0.001"></div>
-                <div><label>Roll I</label><input name="iRoll_rate" type="number" step="0.001"></div>
-                <div><label>Roll D</label><input name="dRoll_rate" type="number" step="0.001"></div>
-
-                <div><label>Pitch P</label><input name="pPitch_rate" type="number" step="0.001"></div>
-                <div><label>Pitch I</label><input name="iPitch_rate" type="number" step="0.001"></div>
-                <div><label>Pitch D</label><input name="dPitch_rate" type="number" step="0.001"></div>
-
-                <div><label>Yaw P</label><input name="pYaw_rate" type="number" step="0.001"></div>
-                <div><label>Yaw I</label><input name="iYaw_rate" type="number" step="0.001"></div>
-                <div><label>Yaw D</label><input name="dYaw_rate" type="number" step="0.001"></div>
-
-                <div><label>Altitude Rate P</label><input name="pAltitude_rate" type="number" step="0.001"></div>
-                <div><label>Altitude Rate I</label><input name="iAltitude_rate" type="number" step="0.001"></div>
-                <div><label>Altitude Rate D</label><input name="dAltitude_rate" type="number" step="0.001"></div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h4>Angle (góc)</h4>
-              <div class="fields">
-                <div><label>Roll P</label><input name="pRoll_angle" type="number" step="0.001"></div>
-                <div><label>Roll I</label><input name="iRoll_angle" type="number" step="0.001"></div>
-                <div><label>Roll D</label><input name="dRoll_angle" type="number" step="0.001"></div>
-
-                <div><label>Pitch P</label><input name="pPitch_angle" type="number" step="0.001"></div>
-                <div><label>Pitch I</label><input name="iPitch_angle" type="number" step="0.001"></div>
-                <div><label>Pitch D</label><input name="dPitch_angle" type="number" step="0.001"></div>
-
-                <div><label>Yaw P</label><input name="pYaw_angle" type="number" step="0.001"></div>
-                <div><label>Yaw I</label><input name="iYaw_angle" type="number" step="0.001"></div>
-                <div><label>Yaw D</label><input name="dYaw_angle" type="number" step="0.001"></div>
-
-                <div><label>Altitude (m) P</label><input name="pAltitude_m" type="number" step="0.001"></div>
-                <div><label>Altitude (m) I</label><input name="iAltitude_m" type="number" step="0.001"></div>
-                <div><label>Altitude (m) D</label><input name="dAltitude_m" type="number" step="0.001"></div>
-              </div>
-            </div>
+          <h3 data-i18n="telemetry_live">Telemetry (Live)</h3>
+          <div class="telemetry-grid">
+            <div class="tbox"><div class="lbl" data-i18n="t_target_roll">Target Roll</div><div class="val" id="tRoll">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_current_roll">Current Roll</div><div class="val" id="cRoll">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_target_pitch">Target Pitch</div><div class="val" id="tPitch">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_current_pitch">Current Pitch</div><div class="val" id="cPitch">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_target_yaw">Target Yaw</div><div class="val" id="tYaw">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_current_yaw">Current Yaw</div><div class="val" id="cYaw">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_alt_rate">Alt Rate</div><div class="val" id="tAltRate">0</div></div>
+            <div class="tbox"><div class="lbl" data-i18n="t_altitude">Altitude</div><div class="val" id="cAlt">0</div></div>
           </div>
-
-          <!-- Stability -->
-          <div class="tab hide" id="tab-stability">
-            <h3>Độ ổn định</h3>
-            <div class="hint">Dùng để chỉnh chống trôi lệch khi thả joystick, cân bằng trung tính.</div>
-            <div class="section">
-              <h4>Trim (chống trôi)</h4>
-              <div class="hint">
-                Trim dùng để bù lệch cơ khí/cân bằng. Giá trị <b>dương</b>/<b>âm</b>:
-                Roll (+) nghiêng phải / (-) nghiêng trái • Pitch (+) ngửa (lùi) / (-) chúc (tới) • Yaw (+) quay phải / (-) quay trái • Alt (+) tăng lực nâng / (-) giảm.
-              </div>
-              <div class="fields">
-                <div><label>Trim Roll</label><input name="trimRoll" type="number" step="0.01"></div>
-                <div><label>Trim Pitch</label><input name="trimPitch" type="number" step="0.01"></div>
-                <div><label>Trim Yaw</label><input name="trimYaw" type="number" step="0.01"></div>
-                <div><label>Trim Altitude</label><input name="trimAltitude" type="number" step="0.01"></div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h4>Ổn định &amp; chống rung</h4>
-              <div class="fields">
-                <div>
-                  <label>Integral Limit</label>
-                  <input name="integralLimit" type="number" step="1">
-                  <div class="sub">Giới hạn I-term. Tăng = bù lệch mạnh hơn nhưng dễ “quá tay”.</div>
-                </div>
-                <div>
-                  <label>Max Alt Rate Change</label>
-                  <input name="maxRateChange" type="number" step="0.01">
-                  <div class="sub">Giới hạn thay đổi tốc độ lên/xuống mỗi bước. Nhỏ = mượt, lớn = nhanh.</div>
-                </div>
-                <div>
-                  <label>Alpha (lọc)</label>
-                  <input name="alpha" type="number" step="0.01" min="0" max="1">
-                  <div class="sub">Alpha cao = lọc mạnh (mượt hơn) nhưng phản hồi chậm hơn.</div>
-                </div>
-                <div>
-                  <label>Beta (lọc)</label>
-                  <input name="beta" type="number" step="0.01" min="0" max="1">
-                  <div class="sub">Beta dùng trong lọc/ước lượng vận tốc. Tăng = “bám” nhanh hơn nhưng dễ nhiễu.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Speed -->
-          <div class="tab hide" id="tab-speed">
-            <h3>Tốc độ</h3>
-            <div class="hint">
-              Dùng để chỉnh “gắt / nhanh” khi điều khiển. Nếu drone phản ứng quá mạnh → giảm giới hạn hoặc tăng expo.
-            </div>
-
-            <div class="section">
-              <h4>Giới hạn (Limit)</h4>
-              <div class="fields">
-                <div>
-                  <label>Max Angle (°)</label>
-                  <input name="maxAngleDeg" type="number" step="0.1">
-                  <div class="sub">Tăng = nghiêng nhiều hơn (bay nhanh/đổi hướng gắt hơn). Giảm = hiền và dễ lái.</div>
-                </div>
-                <div>
-                  <label>Max Yaw Rate (°/s)</label>
-                  <input name="maxYawRateDegS" type="number" step="0.1">
-                  <div class="sub">Tăng = quay nhanh hơn. Giảm = quay chậm, mượt.</div>
-                </div>
-                <div>
-                  <label>Max Alt Rate (m/s)</label>
-                  <input name="maxAltRateMps" type="number" step="0.1">
-                  <div class="sub">Tăng = lên/xuống nhanh. Giảm = lên/xuống chậm và ổn định.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h4>Độ nhạy (Response)</h4>
-              <div class="fields">
-                <div>
-                  <label>Roll/Pitch Response</label>
-                  <input name="rpResponse" type="number" step="0.01">
-                  <div class="sub">&gt;1 = nhạy hơn, &lt;1 = hiền hơn.</div>
-                </div>
-                <div>
-                  <label>Yaw Response</label>
-                  <input name="yawResponse" type="number" step="0.01">
-                  <div class="sub">&gt;1 = quay nhạy hơn, &lt;1 = quay hiền hơn.</div>
-                </div>
-                <div>
-                  <label>Alt Response</label>
-                  <input name="altResponse" type="number" step="0.01">
-                  <div class="sub">&gt;1 = lên/xuống nhạy hơn, &lt;1 = mượt hơn.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h4>Expo (mượt quanh trung tâm)</h4>
-              <div class="fields">
-                <div>
-                  <label>Roll/Pitch Expo (0..1)</label>
-                  <input name="rpExpo" type="number" step="0.01" min="0" max="1">
-                  <div class="sub">Tăng expo = mượt khi chạm nhẹ joystick, vẫn giữ tốc độ ở biên.</div>
-                </div>
-                <div>
-                  <label>Yaw Expo (0..1)</label>
-                  <input name="yawExpo" type="number" step="0.01" min="0" max="1">
-                  <div class="sub">Tăng expo = quay mượt quanh trung tâm.</div>
-                </div>
-                <div>
-                  <label>Alt Expo (0..1)</label>
-                  <input name="altExpo" type="number" step="0.01" min="0" max="1">
-                  <div class="sub">Tăng expo = lên/xuống mượt khi điều khiển nhỏ.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Load -->
-          <div class="tab hide" id="tab-load">
-            <h3>Tải</h3>
-            <div class="hint">Chỉnh khi gắn vỏ nặng / thay đổi tải để bay ổn định hơn.</div>
-            <div class="section">
-              <h4>Tải (Load) / lực nâng</h4>
-              <div class="hint">Chỉnh khi gắn vỏ nặng, thay pin, đổi cánh… để giữ độ cao ổn hơn.</div>
-              <div class="fields">
-                <div>
-                  <label><span class="pname">BaseSpeed</span> (ga nền)</label>
-                  <input name="baseSpeed" type="number" step="1">
-                  <div class="sub">Mức ga nền để treo. Tăng nếu “tụt” khi tải nặng.</div>
-                </div>
-                <div>
-                  <label><span class="pname">range_altitude</span> (biên độ cao độ)</label>
-                  <input name="range_altitude" type="number" step="0.1">
-                  <div class="sub">Biên độ/độ nhạy vòng cao độ (tuỳ thuật toán). Quá lớn có thể dễ dao động.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="section">
-              <h4>FeedForward (FF)</h4>
-              <div class="hint">FF giúp phản ứng “đi trước” thay vì chỉ dựa vào PID. Tăng FF nếu bị trễ khi thay đổi nhanh.</div>
-              <div class="fields">
-                <div><label><span class="pname">kFF_Roll</span></label><input name="kff_roll" type="number" step="0.01"></div>
-                <div><label><span class="pname">kFF_Pitch</span></label><input name="kff_pitch" type="number" step="0.01"></div>
-                <div><label><span class="pname">kFF_Yaw</span></label><input name="kff_yaw" type="number" step="0.01"></div>
-                <div><label><span class="pname">kFF_Alt</span></label><input name="kff_altitude" type="number" step="0.01"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="row">
-              <button class="btn primary" type="submit">Lưu cài đặt</button>
-              <a class="btn" href="/telemetry_ui" style="text-decoration:none;display:inline-flex;align-items:center">Telemetry UI</a>
-            </div>
-          </div>
-        </form>
-      </div>
-      </div>
-
-      <div class="right">
-        <div class="rightStack">
-          <div class="card" id="telemetryCard">
-            <h3>Telemetry (live)</h3>
-            <div class="teleGrid">
-              <div class="teleItem"><div class="k">Target Roll</div><div class="v"><span id="targetRoll">0</span></div></div>
-              <div class="teleItem"><div class="k">Target Pitch</div><div class="v"><span id="targetPitch">0</span></div></div>
-              <div class="teleItem"><div class="k">Target Yaw</div><div class="v"><span id="targetYaw">0</span></div></div>
-              <div class="teleItem"><div class="k">Alt Rate Target</div><div class="v"><span id="altRateTarget">0</span></div></div>
-
-              <div class="teleItem"><div class="k">Current Roll</div><div class="v"><span id="currentRoll">0</span></div></div>
-              <div class="teleItem"><div class="k">Current Pitch</div><div class="v"><span id="currentPitch">0</span></div></div>
-              <div class="teleItem"><div class="k">Current Yaw</div><div class="v"><span id="currentYaw">0</span></div></div>
-              <div class="teleItem"><div class="k">Altitude</div><div class="v"><span id="currentAltitude">0</span></div></div>
-            </div>
-            <div class="hint" style="margin-top:10px">
-              Nếu drone đang ARMED/FLYING: trang tuning sẽ bị khóa (để tránh save nhầm). Telemetry UI vẫn xem được.
-            </div>
-          </div>
-
-          <div class="card" id="calibCard">
-            <h3>Calibration</h3>
-            <div class="hint">Chỉ calib khi để drone trên mặt phẳng, không ARMED. Calib Mag cần xoay cảm biến đủ mọi hướng.</div>
-            <div class="row" style="margin-top:10px">
-              <button class="btn" type="button" id="btnCalibAG">Calib Accel/Gyro</button>
-              <button class="btn" type="button" id="btnCalibMag">Calib Mag</button>
-              <button class="btn danger" type="button" id="btnResetCalib">Reset Calib</button>
-            </div>
-            <div class="hint" style="margin-top:10px">Status: <span class="mono" id="calibStatus">-</span></div>
+          <div class="hint" style="margin-top:10px" data-i18n-html="telemetry_hint">
+            * Giống file .ino mẫu: khi mở Web Tuning, hệ thống sẽ <b>DISARM</b> để an toàn.
+            Hãy đóng web trước khi bay.
           </div>
         </div>
+
+        <div class="card">
+          <div class="cardhead">
+            <h3 data-i18n="save_title">Save</h3>
+            <button class="btn btn-save" type="submit" form="mainForm" id="saveBtn" data-i18n="save_btn">Save</button>
+          </div>
+          <div id="msgHost"></div>
+        </div>
+
+        <div class="card">
+          <h3 data-i18n="cal_title">Calibration</h3>
+          <div class="btnline" style="margin-top:8px">
+            <form method="POST" action="/calibrateAccelGyro">
+              <button class="btn" type="submit" data-i18n="cal_ag">Calibrate Accel & Gyro</button>
+            </form>
+            <form method="POST" action="/calibrateMag">
+              <button class="btn" type="submit" data-i18n="cal_mag">Calibrate Magnetometer</button>
+            </form>
+            <form method="POST" action="/resetCalibration">
+              <button class="btn btn-danger" type="submit" data-i18n="cal_reset">Reset Calibration</button>
+            </form>
+          </div>
+          <div class="msg" id="calStatus" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="tuning_title">Web Tuning</h3>
+        <div class="tabs" role="tablist">
+          <div class="tab active" data-tab="pid" data-i18n="tab_pid">PID</div>
+          <div class="tab" data-tab="load" data-i18n="tab_load">Mức tải</div>
+          <div class="tab" data-tab="speed" data-i18n="tab_speed">Tốc độ</div>
+          <div class="tab" data-tab="stability" data-i18n="tab_stability">Ổn định</div>
+        </div>
+
+        <form method="POST" action="/save" id="mainForm">
+
+          <div id="tab-pid" style="margin-top:12px">
+            <h3 style="margin:0 0 10px 0" data-i18n="pid_rate_title">PID (Rate)</h3>
+
+            <div class="row3">
+              <div>
+                <label>Roll Rate P</label>
+                <input name="pRoll_rate" type="number" step="0.001" value=")rawliteral" + String(pidRoll_rate.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Roll Rate I</label>
+                <input name="iRoll_rate" type="number" step="0.001" value=")rawliteral" + String(pidRoll_rate.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Roll Rate D</label>
+                <input name="dRoll_rate" type="number" step="0.001" value=")rawliteral" + String(pidRoll_rate.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Pitch Rate P</label>
+                <input name="pPitch_rate" type="number" step="0.001" value=")rawliteral" + String(pidPitch_rate.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Pitch Rate I</label>
+                <input name="iPitch_rate" type="number" step="0.001" value=")rawliteral" + String(pidPitch_rate.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Pitch Rate D</label>
+                <input name="dPitch_rate" type="number" step="0.001" value=")rawliteral" + String(pidPitch_rate.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Yaw Rate P</label>
+                <input name="pYaw_rate" type="number" step="0.001" value=")rawliteral" + String(pidYaw_rate.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Yaw Rate I</label>
+                <input name="iYaw_rate" type="number" step="0.001" value=")rawliteral" + String(pidYaw_rate.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Yaw Rate D</label>
+                <input name="dYaw_rate" type="number" step="0.001" value=")rawliteral" + String(pidYaw_rate.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Altitude Rate P</label>
+                <input name="pAltitude_rate" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_rate.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Altitude Rate I</label>
+                <input name="iAltitude_rate" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_rate.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Altitude Rate D</label>
+                <input name="dAltitude_rate" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_rate.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <h3 style="margin:14px 0 10px 0" data-i18n="pid_angle_title">PID (Angle / Altitude)</h3>
+
+            <div class="row3">
+              <div>
+                <label>Roll Angle P</label>
+                <input name="pRoll_angle" type="number" step="0.001" value=")rawliteral" + String(pidRoll_angle.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Roll Angle I</label>
+                <input name="iRoll_angle" type="number" step="0.001" value=")rawliteral" + String(pidRoll_angle.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Roll Angle D</label>
+                <input name="dRoll_angle" type="number" step="0.001" value=")rawliteral" + String(pidRoll_angle.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Pitch Angle P</label>
+                <input name="pPitch_angle" type="number" step="0.001" value=")rawliteral" + String(pidPitch_angle.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Pitch Angle I</label>
+                <input name="iPitch_angle" type="number" step="0.001" value=")rawliteral" + String(pidPitch_angle.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Pitch Angle D</label>
+                <input name="dPitch_angle" type="number" step="0.001" value=")rawliteral" + String(pidPitch_angle.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Yaw Angle P</label>
+                <input name="pYaw_angle" type="number" step="0.001" value=")rawliteral" + String(pidYaw_angle.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Yaw Angle I</label>
+                <input name="iYaw_angle" type="number" step="0.001" value=")rawliteral" + String(pidYaw_angle.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Yaw Angle D</label>
+                <input name="dYaw_angle" type="number" step="0.001" value=")rawliteral" + String(pidYaw_angle.D) + R"rawliteral(">
+              </div>
+            </div>
+
+            <div class="row3">
+              <div>
+                <label>Altitude (m) P</label>
+                <input name="pAltitude_m" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_m.P) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Altitude (m) I</label>
+                <input name="iAltitude_m" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_m.I) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Altitude (m) D</label>
+                <input name="dAltitude_m" type="number" step="0.001" value=")rawliteral" + String(pidAltitude_m.D) + R"rawliteral(">
+              </div>
+            </div>
+          </div>
+
+          <div id="tab-load" style="margin-top:12px;display:none">
+            <h3 style="margin:0 0 10px 0" data-i18n="load_title">Mức tải</h3>
+            <label>Base Speed</label>
+            <input name="baseSpeed" type="number" value=")rawliteral" + String(baseSpeed) + R"rawliteral(">
+            <div class="hint" style="margin-top:10px" data-i18n="base_speed_hint">
+              * Base Speed là mức throttle nền (giống file .ino).
+            </div>
+          </div>
+
+          <div id="tab-speed" style="margin-top:12px;display:none">
+            <h3 style="margin:0 0 10px 0" data-i18n="speed_title">Tốc độ</h3>
+            <div class="row3">
+              <div>
+                <label data-i18n="max_rate_change">Max Rate Change (m/s)</label>
+                <input name="maxRateChange" type="number" step="0.01" value=")rawliteral" + String(maxRateChange) + R"rawliteral(">
+              </div>
+              <div>
+                <label data-i18n="roll_pitch_limit">Roll/Pitch Limit</label>
+                <input type="text" value="±30°" readonly>
+              </div>
+              <div>
+                <label data-i18n="yaw_rate_limit">Yaw Rate Limit</label>
+                <input type="text" value="±90°/s" readonly>
+              </div>
+            </div>
+            <label style="margin-top:10px" data-i18n="alt_rate_limit">Alt Rate Limit</label>
+            <input type="text" value="±5 m/s" readonly>
+            <div class="hint" style="margin-top:10px" data-i18n-html="speed_hint">
+              * Slew-rate altitude dùng <span class="mono">maxRateChange</span> (giống logic file .ino).
+            </div>
+          </div>
+
+          <div id="tab-stability" style="margin-top:12px;display:none">
+            <h3 style="margin:0 0 10px 0" data-i18n="stability_title">Ổn định</h3>
+
+            <div class="row3">
+              <div>
+                <label>Trim Roll</label>
+                <input name="trimRoll" type="number" step="0.001" value=")rawliteral" + String(trimRoll) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Trim Pitch</label>
+                <input name="trimPitch" type="number" step="0.001" value=")rawliteral" + String(trimPitch) + R"rawliteral(">
+              </div>
+              <div>
+                <label>Trim Yaw</label>
+                <input name="trimYaw" type="number" step="0.001" value=")rawliteral" + String(trimYaw) + R"rawliteral(">
+              </div>
+            </div>
+
+            <label style="margin-top:10px">Trim Altitude</label>
+            <input name="trimAltitude" type="number" step="0.001" value=")rawliteral" + String(trimAltitude) + R"rawliteral(">
+          </div>
+
+        </form>
       </div>
     </div>
   </div>
 
-
 <script>
-  const msgBox = document.getElementById('msg');
-  const DEFAULTS = {{DEFAULTS}};
+  // Move server message into Save card
+  window.addEventListener('DOMContentLoaded', () => {
+    const msg = document.getElementById('serverMsg');
+    const host = document.getElementById('msgHost');
+    if(msg && host){ host.appendChild(msg); msg.style.display = ''; }
+  });
 
-  function applyDefaults(cfg){
-    try{
-      for(const [k,v] of Object.entries(cfg||{})){
-        const el = document.querySelector('[name="'+k+'"]');
-        if(el && (el.value===undefined || el.value===null || el.value==='')) el.value = v;
-      }
-    }catch(e){}
+  // Language toggle (EN/VI)
+  const I18N = {
+    vi: {
+      telemetry_live: 'Telemetry (Live)',
+      t_target_roll: 'Roll mục tiêu',
+      t_current_roll: 'Roll hiện tại',
+      t_target_pitch: 'Pitch mục tiêu',
+      t_current_pitch: 'Pitch hiện tại',
+      t_target_yaw: 'Yaw mục tiêu',
+      t_current_yaw: 'Yaw hiện tại',
+      t_alt_rate: 'Tốc độ cao',
+      t_altitude: 'Độ cao',
+      telemetry_hint: '* Giống file .ino mẫu: khi mở Web Tuning, hệ thống sẽ <b>DISARM</b> để an toàn. Hãy đóng web trước khi bay.',
+      save_title: 'Lưu',
+      save_btn: 'LƯU',
+      cal_title: 'Hiệu chuẩn',
+      cal_ag: 'Calib Gia tốc & Gyro',
+      cal_mag: 'Calib Từ kế',
+      cal_reset: 'Reset Calib',
+      tuning_title: 'Web Tuning',
+      tab_pid: 'PID',
+      tab_load: 'Mức tải',
+      tab_speed: 'Tốc độ',
+      tab_stability: 'Ổn định',
+      pid_rate_title: 'PID (Rate)',
+      pid_angle_title: 'PID (Angle / Altitude)',
+      load_title: 'Mức tải',
+      base_speed_hint: '* Base Speed là mức throttle nền (giống file .ino).',
+      speed_title: 'Tốc độ',
+      max_rate_change: 'Max Rate Change (m/s)',
+      roll_pitch_limit: 'Giới hạn Roll/Pitch',
+      yaw_rate_limit: 'Giới hạn Yaw rate',
+      alt_rate_limit: 'Giới hạn Alt rate',
+      speed_hint: '* Slew-rate altitude dùng <span class="mono">maxRateChange</span> (giống logic file .ino).',
+      stability_title: 'Ổn định'
+    },
+    en: {
+      telemetry_live: 'Telemetry (Live)',
+      t_target_roll: 'Target Roll',
+      t_current_roll: 'Current Roll',
+      t_target_pitch: 'Target Pitch',
+      t_current_pitch: 'Current Pitch',
+      t_target_yaw: 'Target Yaw',
+      t_current_yaw: 'Current Yaw',
+      t_alt_rate: 'Alt Rate',
+      t_altitude: 'Altitude',
+      telemetry_hint: '* Same as the .ino: opening Web Tuning will <b>DISARM</b> for safety. Close the web before flight.',
+      save_title: 'Save',
+      save_btn: 'SAVE',
+      cal_title: 'Calibration',
+      cal_ag: 'Calibrate Accel & Gyro',
+      cal_mag: 'Calibrate Magnetometer',
+      cal_reset: 'Reset Calibration',
+      tuning_title: 'Web Tuning',
+      tab_pid: 'PID',
+      tab_load: 'Load',
+      tab_speed: 'Speed',
+      tab_stability: 'Stability',
+      pid_rate_title: 'PID (Rate)',
+      pid_angle_title: 'PID (Angle / Altitude)',
+      load_title: 'Load',
+      base_speed_hint: '* Base Speed is the base throttle (as in the .ino).',
+      speed_title: 'Speed',
+      max_rate_change: 'Max Rate Change (m/s)',
+      roll_pitch_limit: 'Roll/Pitch Limit',
+      yaw_rate_limit: 'Yaw Rate Limit',
+      alt_rate_limit: 'Alt Rate Limit',
+      speed_hint: '* Altitude slew-rate uses <span class="mono">maxRateChange</span> (same as the .ino).',
+      stability_title: 'Stability'
+    }
+  };
+
+  let lang = (localStorage.getItem('meb_lang') || 'vi');
+
+  function tr(key){
+    return (I18N[lang] && I18N[lang][key]) || (I18N.en[key] || key);
   }
 
-  function showMsg(t, ok=true){
-    if(!t){ msgBox.style.display='none'; return; }
-    msgBox.style.display='block';
-    msgBox.textContent=t;
-    msgBox.style.borderColor = ok ? 'rgba(46,229,157,.55)' : 'rgba(255,77,109,.55)';
+  function applyLang(){
+    document.documentElement.lang = (lang === 'vi' ? 'vi' : 'en');
+    const btn = document.getElementById('langBtn');
+    if(btn) btn.innerHTML = (lang === 'vi' ? '<b>VI</b><span class="dim">/EN</span>' : '<span class="dim">VI/</span><b>EN</b>');
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const k = el.getAttribute('data-i18n');
+      el.textContent = tr(k);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const k = el.getAttribute('data-i18n-html');
+      el.innerHTML = tr(k);
+    });
   }
+
+  document.getElementById('langBtn').addEventListener('click', () => {
+    lang = (lang === 'vi' ? 'en' : 'vi');
+    localStorage.setItem('meb_lang', lang);
+    applyLang();
+  });
+
+  applyLang();
 
   // Tabs
-  const tabBtns = [...document.querySelectorAll('.tabbtn')];
-  const tabs = {
+  const tabs = document.querySelectorAll('.tab');
+  const panels = {
     pid: document.getElementById('tab-pid'),
-    stability: document.getElementById('tab-stability'),
-    speed: document.getElementById('tab-speed'),
     load: document.getElementById('tab-load'),
+    speed: document.getElementById('tab-speed'),
+    stability: document.getElementById('tab-stability'),
   };
-  function setTab(key){
-    Object.keys(tabs).forEach(k=>{
-      tabs[k].classList.toggle('hide', k!==key);
-    });
-    tabBtns.forEach(b=>b.classList.toggle('active', b.dataset.tab===key));
-  }
-  tabBtns.forEach(b=>b.addEventListener('click', ()=>setTab(b.dataset.tab)));
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const key = t.getAttribute('data-tab');
+    Object.keys(panels).forEach(k => panels[k].style.display = (k === key ? '' : 'none'));
+  }));
 
-  async function loadConfig(){
-    try{
-      const r = await fetch('/config', {cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      const cfg = await r.json();
-      for(const [k,v] of Object.entries(cfg)){
-        const el = document.querySelector('[name="'+k+'"]');
-        if(el) el.value = v;
-      }
-    }catch(e){
-      showMsg('⚠️ loadConfig error: ' + e, false);
-    }
-  }
-
-  async function pollTelemetry(){
+  // Telemetry polling (giống ino: fetch /telemetry)
+  async function updateTelemetry(){
     try{
       const r = await fetch('/telemetry', {cache:'no-store'});
-      if(!r.ok) return;
-      const t = await r.json();
-      const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.textContent=Number(val).toFixed(2); };
-      set('targetRoll', t.targetRoll);
-      set('targetPitch', t.targetPitch);
-      set('targetYaw', t.targetYaw);
-      set('altRateTarget', t.altitude_rate_target);
-      set('currentRoll', t.currentRoll);
-      set('currentPitch', t.currentPitch);
-      set('currentYaw', t.currentYaw);
-      set('currentAltitude', t.currentAltitude);
+      const d = await r.json();
+      document.getElementById('tRoll').textContent = (d.targetRoll ?? 0).toFixed(2);
+      document.getElementById('tPitch').textContent = (d.targetPitch ?? 0).toFixed(2);
+      document.getElementById('tYaw').textContent = (d.targetYaw ?? 0).toFixed(2);
+      document.getElementById('tAltRate').textContent = (d.altitude_rate_target ?? 0).toFixed(2);
+      document.getElementById('cRoll').textContent = (d.currentRoll ?? 0).toFixed(2);
+      document.getElementById('cPitch').textContent = (d.currentPitch ?? 0).toFixed(2);
+      document.getElementById('cYaw').textContent = (d.currentYaw ?? 0).toFixed(2);
+      document.getElementById('cAlt').textContent = (d.currentAltitude ?? 0).toFixed(2);
     }catch(e){}
   }
+  updateTelemetry();
+  setInterval(updateTelemetry, 200);
 
-  async function pollCalib(){
+  // Calibration status
+  async function pollCal(){
     try{
       const r = await fetch('/calibrationStatus', {cache:'no-store'});
-      if(r.ok){
-        document.getElementById('calibStatus').textContent = await r.text();
+      const t = await r.text();
+      const el = document.getElementById('calStatus');
+      if(t && t.trim().length){
+        el.style.display = '';
+        el.textContent = t;
+      } else {
+        el.style.display = 'none';
       }
     }catch(e){}
   }
-
-  async function post(path){
-    try{
-      const r = await fetch(path, {method:'POST'});
-      const t = await r.text();
-      showMsg(t, r.ok);
-    }catch(e){
-      showMsg('⚠️ ' + path + ' error: ' + e, false);
-    }
-  }
-
-  const _btnAG = document.getElementById('btnCalibAG');
-  if(_btnAG) _btnAG.addEventListener('click', ()=>post('/calibrateAccelGyro'));
-  const _btnMag = document.getElementById('btnCalibMag');
-  if(_btnMag) _btnMag.addEventListener('click', ()=>post('/calibrateMag'));
-  const _btnReset = document.getElementById('btnResetCalib');
-  if(_btnReset) _btnReset.addEventListener('click', ()=>post('/resetCalibration'));
-
-  window.addEventListener('load', ()=>{
-    const initMsg = msgBox.textContent.trim();
-    if(initMsg) showMsg(initMsg, !initMsg.toLowerCase().includes('error'));
-    applyDefaults(DEFAULTS);
-    loadConfig();
-    pollTelemetry();
-    pollCalib();
-    setInterval(pollTelemetry, 400);
-    setInterval(pollCalib, 700);
-  });
+  setInterval(pollCal, 500);
 </script>
-
 </body>
 </html>
-)HTML";
-
-  html.replace("{{MAC}}", mac);
-  html.replace("{{MSG}}", String(message));
-
-  // Embed defaults so UI shows values immediately even if /config fetch is delayed
-  String defaults = "{";
-  defaults += "\"pRoll_rate\":" + String(pidRoll_rate.P, 6) + ",";
-  defaults += "\"iRoll_rate\":" + String(pidRoll_rate.I, 6) + ",";
-  defaults += "\"dRoll_rate\":" + String(pidRoll_rate.D, 6) + ",";
-  defaults += "\"pPitch_rate\":" + String(pidPitch_rate.P, 6) + ",";
-  defaults += "\"iPitch_rate\":" + String(pidPitch_rate.I, 6) + ",";
-  defaults += "\"dPitch_rate\":" + String(pidPitch_rate.D, 6) + ",";
-  defaults += "\"pYaw_rate\":" + String(pidYaw_rate.P, 6) + ",";
-  defaults += "\"iYaw_rate\":" + String(pidYaw_rate.I, 6) + ",";
-  defaults += "\"dYaw_rate\":" + String(pidYaw_rate.D, 6) + ",";
-
-  defaults += "\"pRoll_angle\":" + String(pidRoll_angle.P, 6) + ",";
-  defaults += "\"iRoll_angle\":" + String(pidRoll_angle.I, 6) + ",";
-  defaults += "\"dRoll_angle\":" + String(pidRoll_angle.D, 6) + ",";
-  defaults += "\"pPitch_angle\":" + String(pidPitch_angle.P, 6) + ",";
-  defaults += "\"iPitch_angle\":" + String(pidPitch_angle.I, 6) + ",";
-  defaults += "\"dPitch_angle\":" + String(pidPitch_angle.D, 6) + ",";
-  defaults += "\"pYaw_angle\":" + String(pidYaw_angle.P, 6) + ",";
-  defaults += "\"iYaw_angle\":" + String(pidYaw_angle.I, 6) + ",";
-  defaults += "\"dYaw_angle\":" + String(pidYaw_angle.D, 6) + ",";
-
-  defaults += "\"pAltitude_rate\":" + String(pidAltitude_rate.P, 6) + ",";
-  defaults += "\"iAltitude_rate\":" + String(pidAltitude_rate.I, 6) + ",";
-  defaults += "\"dAltitude_rate\":" + String(pidAltitude_rate.D, 6) + ",";
-  defaults += "\"pAltitude_m\":" + String(pidAltitude_m.P, 6) + ",";
-  defaults += "\"iAltitude_m\":" + String(pidAltitude_m.I, 6) + ",";
-  defaults += "\"dAltitude_m\":" + String(pidAltitude_m.D, 6) + ",";
-
-  defaults += "\"trimRoll\":" + String(trimRoll, 3) + ",";
-  defaults += "\"trimPitch\":" + String(trimPitch, 3) + ",";
-  defaults += "\"trimYaw\":" + String(trimYaw, 3) + ",";
-  defaults += "\"trimAltitude\":" + String(trimAltitude, 3) + ",";
-  defaults += "\"integralLimit\":" + String(integralLimit) + ",";
-  defaults += "\"maxRateChange\":" + String(maxRateChange, 3) + ",";
-  defaults += "\"alpha\":" + String(alpha, 3) + ",";
-  defaults += "\"beta\":" + String(beta, 3) + ",";
-
-  defaults += "\"maxAngleDeg\":" + String(maxAngleDeg, 2) + ",";
-  defaults += "\"maxYawRateDegS\":" + String(maxYawRateDegS, 1) + ",";
-  defaults += "\"maxAltRateMps\":" + String(maxAltRateMps, 2) + ",";
-  defaults += "\"rpResponse\":" + String(rpResponse, 2) + ",";
-  defaults += "\"yawResponse\":" + String(yawResponse, 2) + ",";
-  defaults += "\"altResponse\":" + String(altResponse, 2) + ",";
-  defaults += "\"rpExpo\":" + String(rpExpo, 2) + ",";
-  defaults += "\"yawExpo\":" + String(yawExpo, 2) + ",";
-  defaults += "\"altExpo\":" + String(altExpo, 2) + ",";
-
-  defaults += "\"range_altitude\":" + String(range_altitude, 2) + ",";
-  defaults += "\"kff_roll\":" + String(kff_roll, 2) + ",";
-  defaults += "\"kff_pitch\":" + String(kff_pitch, 2) + ",";
-  defaults += "\"kff_yaw\":" + String(kff_yaw, 2) + ",";
-  defaults += "\"kff_altitude\":" + String(kff_altitude, 2) + ",";
-  defaults += "\"baseSpeed\":" + String(baseSpeed);
-  defaults += "}";
-
-  html.replace("{{DEFAULTS}}", defaults);
-  return html;
-}
-
-String telemetryViewHTML() {
-  String html = R"rawliteral(
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>MEBlock Drone Telemetry V1</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0e2a52; color:#ffffff; }
-      .wrap { max-width: 720px; margin: 0 auto; padding: 14px; }
-      .top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      .title { font-size:18px; font-weight:700; letter-spacing:0.2px; }
-      .badge { font-size:12px; padding:6px 10px; border-radius:999px; background:#123a6b; border:1px solid #2e5b99; }
-      .grid { margin-top: 12px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .card { background:#123a6b; border:1px solid #2e5b99; border-radius: 12px; padding: 12px; }
-      .label { font-size:12px; color:#b7b7c6; margin-bottom:6px; }
-      .val { font-size:22px; font-weight:800; }
-      .unit { font-size:12px; color:#b7b7c6; margin-left: 6px; font-weight: 600; }
-      .hint { margin-top: 12px; font-size: 12px; color:#a7a7b6; line-height:1.35; }
-      a { color:#6dd6ff; text-decoration:none; }
-      a:active, a:hover { text-decoration: underline; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="top">
-        <div class="title">MEBlock Drone Telemetry V1</div>
-        <div class="badge mono" id="status">...</div>
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <div class="label">Target Roll</div>
-          <div class="val"><span id="targetRoll_v">0</span><span class="unit">deg</span></div>
-        </div>
-        <div class="card">
-          <div class="label">Current Roll</div>
-          <div class="val"><span id="currentRoll_v">0</span><span class="unit">deg</span></div>
-        </div>
-
-        <div class="card">
-          <div class="label">Target Pitch</div>
-          <div class="val"><span id="targetPitch_v">0</span><span class="unit">deg</span></div>
-        </div>
-        <div class="card">
-          <div class="label">Current Pitch</div>
-          <div class="val"><span id="currentPitch_v">0</span><span class="unit">deg</span></div>
-        </div>
-
-        <div class="card">
-          <div class="label">Target Yaw</div>
-          <div class="val"><span id="targetYaw_v">0</span><span class="unit">deg</span></div>
-        </div>
-        <div class="card">
-          <div class="label">Current Yaw</div>
-          <div class="val"><span id="currentYaw_v">0</span><span class="unit">deg</span></div>
-        </div>
-
-        <div class="card">
-          <div class="label">Altitude Rate Target</div>
-          <div class="val"><span id="altRate_v">0</span><span class="unit">m/s</span></div>
-        </div>
-        <div class="card">
-          <div class="label">Current Altitude</div>
-          <div class="val"><span id="alt_v">0</span><span class="unit">m</span></div>
-        </div>
-      </div>
-
-      <div class="hint">
-        • Khi đang bay, UI tuning sẽ tự chuyển sang trang này để giảm tải. <br>
-        • Nếu đang <span class="mono">DISARMED</span> bạn có thể mở tuning tại <a href="/tuning">/tuning</a>.
-      </div>
-    </div>
-
-    <script>
-      const $ = (id) => document.getElementById(id);
-
-      function fmt(x, d=2) {
-        if (typeof x !== 'number' || isNaN(x)) return '0';
-        return x.toFixed(d);
-      }
-
-      async function tick() {
-        try {
-          const r = await fetch('/telemetry', { cache: 'no-store' });
-          const d = await r.json();
-
-          const st = (d.armed ? 'ARMED' : 'DISARMED') + (d.onFlying ? ' • FLYING' : '');
-          $('status').textContent = st;
-
-          $('targetRoll_v').textContent   = fmt(d.targetRoll, 2);
-          $('currentRoll_v').textContent  = fmt(d.currentRoll, 2);
-          $('targetPitch_v').textContent  = fmt(d.targetPitch, 2);
-          $('currentPitch_v').textContent = fmt(d.currentPitch, 2);
-          $('targetYaw_v').textContent    = fmt(d.targetYaw, 2);
-          $('currentYaw_v').textContent   = fmt(d.currentYaw, 2);
-          $('altRate_v').textContent      = fmt(d.altitude_rate_target, 2);
-          $('alt_v').textContent          = fmt(d.currentAltitude, 2);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      tick();
-      setInterval(tick, 100); // 10Hz (nhẹ hơn tuning page)
-    </script>
-  </body>
-  </html>
 )rawliteral";
   return html;
 }
@@ -952,24 +773,7 @@ void loadConfig() {
   trimYaw = preferences.getFloat("trimYaw", 0.0);
   trimAltitude = preferences.getFloat("trimAltitude", 0.0);
   baseSpeed = preferences.getInt("baseSpeed", baseSpeed);
-  integralLimit = preferences.getInt("integralLimit", integralLimit);
   maxRateChange = preferences.getFloat("maxRateChange", maxRateChange);
-  alpha = preferences.getFloat("alpha", alpha);
-  beta  = preferences.getFloat("beta", beta);
-  range_altitude = preferences.getFloat("range_altitude", range_altitude);
-  kff_roll = preferences.getFloat("kff_roll", kff_roll);
-  kff_pitch = preferences.getFloat("kff_pitch", kff_pitch);
-  kff_yaw = preferences.getFloat("kff_yaw", kff_yaw);
-  kff_altitude = preferences.getFloat("kff_altitude", kff_altitude);
-  maxAngleDeg = preferences.getFloat("maxAngleDeg", maxAngleDeg);
-  maxYawRateDegS = preferences.getFloat("maxYawRateDegS", maxYawRateDegS);
-  maxAltRateMps = preferences.getFloat("maxAltRateMps", maxAltRateMps);
-  rpResponse = preferences.getFloat("rpResponse", rpResponse);
-  yawResponse = preferences.getFloat("yawResponse", yawResponse);
-  altResponse = preferences.getFloat("altResponse", altResponse);
-  rpExpo = preferences.getFloat("rpExpo", rpExpo);
-  yawExpo = preferences.getFloat("yawExpo", yawExpo);
-  altExpo = preferences.getFloat("altExpo", altExpo);
   preferences.end();
 }
 
@@ -1007,27 +811,10 @@ void saveConfig() {
   preferences.putFloat("trimYaw", trimYaw);
   preferences.putFloat("trimAltitude", trimAltitude);
   preferences.putInt("baseSpeed", baseSpeed);
-  preferences.putInt("integralLimit", integralLimit);
   preferences.putFloat("maxRateChange", maxRateChange);
-  preferences.putFloat("alpha", alpha);
-  preferences.putFloat("beta", beta);
-  preferences.putFloat("range_altitude", range_altitude);
-  preferences.putFloat("kff_roll", kff_roll);
-  preferences.putFloat("kff_pitch", kff_pitch);
-  preferences.putFloat("kff_yaw", kff_yaw);
-  preferences.putFloat("kff_altitude", kff_altitude);
-  preferences.putFloat("maxAngleDeg", maxAngleDeg);
-  preferences.putFloat("maxYawRateDegS", maxYawRateDegS);
-  preferences.putFloat("maxAltRateMps", maxAltRateMps);
-  preferences.putFloat("rpResponse", rpResponse);
-  preferences.putFloat("yawResponse", yawResponse);
-  preferences.putFloat("altResponse", altResponse);
-  preferences.putFloat("rpExpo", rpExpo);
-  preferences.putFloat("yawExpo", yawExpo);
-  preferences.putFloat("altExpo", altExpo);
-
   preferences.end();
 }
+
 
 void calibrateAccelGyro() {
 
@@ -1191,37 +978,13 @@ void startWebServer() {
 
     dnsServer.start(DNS_PORT, "*", apIP);
 
-    // Register routes only once (avoid duplicates if start/stop many times)
     if (!routesRegistered) {
-      routesRegistered = true;
-
-      // Root: auto switch (FLYING => telemetry, DISARMED => tuning)
       server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (Armed || OnFlying) {
-          request->send(200, "text/html", telemetryViewHTML());
-        } else {
-          request->send(200, "text/html", htmlForm());
-        }
-      });
-
-      // Explicit pages
-      server.on("/tuning", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (Armed || OnFlying) {
-          request->redirect("/telemetry_ui");
-          return;
-        }
         request->send(200, "text/html", htmlForm());
       });
 
-      server.on("/telemetry_ui", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", telemetryViewHTML());
-      });
-
-      // Telemetry JSON (used by both pages)
-      server.on("/telemetry", HTTP_GET, [](AsyncWebServerRequest *request) {
+      server.on("/telemetry", HTTP_GET, [](AsyncWebServerRequest *request){
         String json = "{";
-        json += "\"armed\":" + String(Armed ? 1 : 0) + ",";
-        json += "\"onFlying\":" + String(OnFlying ? 1 : 0) + ",";
         json += "\"targetRoll\":" + String(targetRoll) + ",";
         json += "\"targetPitch\":" + String(targetPitch) + ",";
         json += "\"targetYaw\":" + String(targetYaw) + ",";
@@ -1233,71 +996,8 @@ void startWebServer() {
         json += "}";
         request->send(200, "application/json", json);
       });
-      // Current tuning config (used by /tuning UI)
-      server.on("/config", HTTP_GET, [](AsyncWebServerRequest *request) {
-        String json = "{";
-        json += "\"pRoll_rate\":" + String(pidRoll_rate.P, 6) + ",";
-        json += "\"iRoll_rate\":" + String(pidRoll_rate.I, 6) + ",";
-        json += "\"dRoll_rate\":" + String(pidRoll_rate.D, 6) + ",";
-        json += "\"pPitch_rate\":" + String(pidPitch_rate.P, 6) + ",";
-        json += "\"iPitch_rate\":" + String(pidPitch_rate.I, 6) + ",";
-        json += "\"dPitch_rate\":" + String(pidPitch_rate.D, 6) + ",";
-        json += "\"pYaw_rate\":" + String(pidYaw_rate.P, 6) + ",";
-        json += "\"iYaw_rate\":" + String(pidYaw_rate.I, 6) + ",";
-        json += "\"dYaw_rate\":" + String(pidYaw_rate.D, 6) + ",";
 
-        json += "\"pRoll_angle\":" + String(pidRoll_angle.P, 6) + ",";
-        json += "\"iRoll_angle\":" + String(pidRoll_angle.I, 6) + ",";
-        json += "\"dRoll_angle\":" + String(pidRoll_angle.D, 6) + ",";
-        json += "\"pPitch_angle\":" + String(pidPitch_angle.P, 6) + ",";
-        json += "\"iPitch_angle\":" + String(pidPitch_angle.I, 6) + ",";
-        json += "\"dPitch_angle\":" + String(pidPitch_angle.D, 6) + ",";
-        json += "\"pYaw_angle\":" + String(pidYaw_angle.P, 6) + ",";
-        json += "\"iYaw_angle\":" + String(pidYaw_angle.I, 6) + ",";
-        json += "\"dYaw_angle\":" + String(pidYaw_angle.D, 6) + ",";
-
-        json += "\"pAltitude_rate\":" + String(pidAltitude_rate.P, 6) + ",";
-        json += "\"iAltitude_rate\":" + String(pidAltitude_rate.I, 6) + ",";
-        json += "\"dAltitude_rate\":" + String(pidAltitude_rate.D, 6) + ",";
-        json += "\"pAltitude_m\":" + String(pidAltitude_m.P, 6) + ",";
-        json += "\"iAltitude_m\":" + String(pidAltitude_m.I, 6) + ",";
-        json += "\"dAltitude_m\":" + String(pidAltitude_m.D, 6) + ",";
-
-        json += "\"trimRoll\":" + String(trimRoll, 3) + ",";
-        json += "\"trimPitch\":" + String(trimPitch, 3) + ",";
-        json += "\"trimYaw\":" + String(trimYaw, 3) + ",";
-        json += "\"trimAltitude\":" + String(trimAltitude, 3) + ",";
-        json += "\"integralLimit\":" + String(integralLimit) + ",";
-        json += "\"maxRateChange\":" + String(maxRateChange, 3) + ",";
-        json += "\"alpha\":" + String(alpha, 3) + ",";
-        json += "\"beta\":" + String(beta, 3) + ",";
-        json += "\"maxAngleDeg\":" + String(maxAngleDeg, 2) + ",";
-        json += "\"maxYawRateDegS\":" + String(maxYawRateDegS, 1) + ",";
-        json += "\"maxAltRateMps\":" + String(maxAltRateMps, 2) + ",";
-        json += "\"rpResponse\":" + String(rpResponse, 2) + ",";
-        json += "\"yawResponse\":" + String(yawResponse, 2) + ",";
-        json += "\"altResponse\":" + String(altResponse, 2) + ",";
-        json += "\"rpExpo\":" + String(rpExpo, 2) + ",";
-        json += "\"yawExpo\":" + String(yawExpo, 2) + ",";
-        json += "\"altExpo\":" + String(altExpo, 2) + ",";
-        json += "\"range_altitude\":" + String(range_altitude, 2) + ",";
-        json += "\"kff_roll\":" + String(kff_roll, 2) + ",";
-        json += "\"kff_pitch\":" + String(kff_pitch, 2) + ",";
-        json += "\"kff_yaw\":" + String(kff_yaw, 2) + ",";
-        json += "\"kff_altitude\":" + String(kff_altitude, 2) + ",";
-        json += "\"baseSpeed\":" + String(baseSpeed);
-        json += "}";
-        request->send(200, "application/json", json);
-      });
-
-
-      // ---------------------- TUNING / CALIBRATION (LOCKED while ARMED/FLYING) ----------------------
       server.on("/save", HTTP_POST, [](AsyncWebServerRequest *request) {
-        if (Armed || OnFlying) {
-          request->send(423, "text/plain", "Locked while ARMED/FLYING");
-          return;
-        }
-
         if (request->hasParam("pRoll_rate", true)) pidRoll_rate.P = request->getParam("pRoll_rate", true)->value().toFloat();
         if (request->hasParam("iRoll_rate", true)) pidRoll_rate.I = request->getParam("iRoll_rate", true)->value().toFloat();
         if (request->hasParam("dRoll_rate", true)) pidRoll_rate.D = request->getParam("dRoll_rate", true)->value().toFloat();
@@ -1310,7 +1010,6 @@ void startWebServer() {
         if (request->hasParam("pAltitude_rate", true)) pidAltitude_rate.P = request->getParam("pAltitude_rate", true)->value().toFloat();
         if (request->hasParam("iAltitude_rate", true)) pidAltitude_rate.I = request->getParam("iAltitude_rate", true)->value().toFloat();
         if (request->hasParam("dAltitude_rate", true)) pidAltitude_rate.D = request->getParam("dAltitude_rate", true)->value().toFloat();
-
         if (request->hasParam("pRoll_angle", true)) pidRoll_angle.P = request->getParam("pRoll_angle", true)->value().toFloat();
         if (request->hasParam("iRoll_angle", true)) pidRoll_angle.I = request->getParam("iRoll_angle", true)->value().toFloat();
         if (request->hasParam("dRoll_angle", true)) pidRoll_angle.D = request->getParam("dRoll_angle", true)->value().toFloat();
@@ -1320,53 +1019,20 @@ void startWebServer() {
         if (request->hasParam("pYaw_angle", true)) pidYaw_angle.P = request->getParam("pYaw_angle", true)->value().toFloat();
         if (request->hasParam("iYaw_angle", true)) pidYaw_angle.I = request->getParam("iYaw_angle", true)->value().toFloat();
         if (request->hasParam("dYaw_angle", true)) pidYaw_angle.D = request->getParam("dYaw_angle", true)->value().toFloat();
-
         if (request->hasParam("pAltitude_m", true)) pidAltitude_m.P = request->getParam("pAltitude_m", true)->value().toFloat();
         if (request->hasParam("iAltitude_m", true)) pidAltitude_m.I = request->getParam("iAltitude_m", true)->value().toFloat();
         if (request->hasParam("dAltitude_m", true)) pidAltitude_m.D = request->getParam("dAltitude_m", true)->value().toFloat();
-
         if (request->hasParam("trimRoll", true)) trimRoll = request->getParam("trimRoll", true)->value().toFloat();
         if (request->hasParam("trimPitch", true)) trimPitch = request->getParam("trimPitch", true)->value().toFloat();
         if (request->hasParam("trimYaw", true)) trimYaw = request->getParam("trimYaw", true)->value().toFloat();
         if (request->hasParam("trimAltitude", true)) trimAltitude = request->getParam("trimAltitude", true)->value().toFloat();
-
-        // Stability / filters
-        if (request->hasParam("integralLimit", true)) integralLimit = request->getParam("integralLimit", true)->value().toInt();
-        if (request->hasParam("maxRateChange", true)) maxRateChange = request->getParam("maxRateChange", true)->value().toFloat();
-        if (request->hasParam("alpha", true)) alpha = request->getParam("alpha", true)->value().toFloat();
-        if (request->hasParam("beta", true)) beta = request->getParam("beta", true)->value().toFloat();
-
-        // Speed (response / limits)
-        if (request->hasParam("maxAngleDeg", true)) maxAngleDeg = request->getParam("maxAngleDeg", true)->value().toFloat();
-        if (request->hasParam("maxYawRateDegS", true)) maxYawRateDegS = request->getParam("maxYawRateDegS", true)->value().toFloat();
-        if (request->hasParam("maxAltRateMps", true)) maxAltRateMps = request->getParam("maxAltRateMps", true)->value().toFloat();
-        if (request->hasParam("rpResponse", true)) rpResponse = request->getParam("rpResponse", true)->value().toFloat();
-        if (request->hasParam("yawResponse", true)) yawResponse = request->getParam("yawResponse", true)->value().toFloat();
-        if (request->hasParam("altResponse", true)) altResponse = request->getParam("altResponse", true)->value().toFloat();
-        if (request->hasParam("rpExpo", true)) rpExpo = request->getParam("rpExpo", true)->value().toFloat();
-        if (request->hasParam("yawExpo", true)) yawExpo = request->getParam("yawExpo", true)->value().toFloat();
-        if (request->hasParam("altExpo", true)) altExpo = request->getParam("altExpo", true)->value().toFloat();
-
-        // Load / FF
-        if (request->hasParam("range_altitude", true)) range_altitude = request->getParam("range_altitude", true)->value().toFloat();
-        if (request->hasParam("kff_roll", true)) kff_roll = request->getParam("kff_roll", true)->value().toFloat();
-        if (request->hasParam("kff_pitch", true)) kff_pitch = request->getParam("kff_pitch", true)->value().toFloat();
-        if (request->hasParam("kff_yaw", true)) kff_yaw = request->getParam("kff_yaw", true)->value().toFloat();
-        if (request->hasParam("kff_altitude", true)) kff_altitude = request->getParam("kff_altitude", true)->value().toFloat();
         if (request->hasParam("baseSpeed", true)) baseSpeed = request->getParam("baseSpeed", true)->value().toInt();
-
-        // Sanity clamps
-        maxAngleDeg = constrain(maxAngleDeg, 5.0f, 70.0f);
-        maxYawRateDegS = constrain(maxYawRateDegS, 10.0f, 250.0f);
-        maxAltRateMps = constrain(maxAltRateMps, 0.5f, 15.0f);
-        rpResponse = constrain(rpResponse, 0.2f, 2.5f);
-        yawResponse = constrain(yawResponse, 0.2f, 2.5f);
-        altResponse = constrain(altResponse, 0.2f, 2.5f);
-        rpExpo = constrain(rpExpo, 0.0f, 1.0f);
-        yawExpo = constrain(yawExpo, 0.0f, 1.0f);
-        altExpo = constrain(altExpo, 0.0f, 1.0f);
-        alpha = constrain(alpha, 0.0f, 1.0f);
-        beta  = constrain(beta, 0.0f, 1.0f);
+        if (request->hasParam("maxRateChange", true)) {
+          float v = request->getParam("maxRateChange", true)->value().toFloat();
+          if (v < 0.01f) v = 0.01f;
+          if (v > 10.0f) v = 10.0f;
+          maxRateChange = v;
+        }
 
         saveConfig();
         printConfigToSerial();
@@ -1374,40 +1040,44 @@ void startWebServer() {
       });
 
       server.on("/calibrateAccelGyro", HTTP_POST, [](AsyncWebServerRequest *request){
-        if (Armed || OnFlying) { request->send(423, "text/plain", "Locked while ARMED/FLYING"); return; }
         calibrateAccelGyroRequested = true;
-        request->send(200, "text/html", htmlForm("Accel & Gyro Calibration started. Please keep the drone still."));
+        request->send(200, "text/html", htmlForm("Accel & Gyro Calibration started. Please keep the drone still"));
       });
 
       server.on("/calibrateMag", HTTP_POST, [](AsyncWebServerRequest *request){
-        if (Armed || OnFlying) { request->send(423, "text/plain", "Locked while ARMED/FLYING"); return; }
         calibrateMagRequested = true;
-        request->send(200, "text/html", htmlForm("Magnetometer Calibration started. Please rotate the drone."));
+        request->send(200, "text/html", htmlForm("Magnetometer Calibration started. Please move the drone"));
       });
 
       server.on("/calibrationStatus", HTTP_GET, [](AsyncWebServerRequest *request){
         String status = "";
         if (AccelGyroisCalibrating) {
           status = "⏳ Calibrating Accel & Gyro...";
-        }
+        } 
         else if (AccelGyrocalibrationDone) {
           status = "✅ Accel & Gyro Calibration complete!";
           AccelGyrocalibrationDone = false;
-        }
+        } 
         else if (MagisCalibrating) {
           status = "⏳ Calibrating Magnetometer...";
-        }
+        } 
         else if (MagcalibrationDone) {
           status = "✅ Magnetometer Calibration complete!";
           MagcalibrationDone = false;
         }
         request->send(200, "text/plain", status);
       });
-server.on("/resetCalibration", HTTP_POST, [](AsyncWebServerRequest *request) {
-        if (Armed || OnFlying) { request->send(423, "text/plain", "Locked while ARMED/FLYING"); return; }
+
+      server.on("/resetCalibration", HTTP_POST, [](AsyncWebServerRequest *request){
         resetCalibration();
-        request->send(200, "text/html", htmlForm("Calibration reset successfully!"));
+        request->send(200, "text/html", htmlForm("Calibration reset to default."));
       });
+
+      server.onNotFound([](AsyncWebServerRequest *request) {
+        request->send(200, "text/html", htmlForm());
+      });
+
+      routesRegistered = true;
     }
 
     server.begin();
@@ -1415,6 +1085,7 @@ server.on("/resetCalibration", HTTP_POST, [](AsyncWebServerRequest *request) {
     Serial.println("Async Web Server Started");
   }
 }
+
 
 void stopWebServer() {
   Serial.println("Stopping Async Web Server...");
@@ -1590,23 +1261,10 @@ void updateSensorsAndMadgwick(float dt) {
 }
 
 void updateParameters(float dt) {
-  // Map RC command → desired angles/rates (Speed tab)
-  float inRoll  = incomingJoystickData.XR;
-  float inPitch = incomingJoystickData.YR;
-  float inYaw   = incomingJoystickData.XL;
-
-  // Normalize to -1..1 using current limits, apply expo, then scale back
-  float nr = constrain(inRoll  / maxAngleDeg,      -1.0f, 1.0f);
-  float np = constrain(inPitch / maxAngleDeg,      -1.0f, 1.0f);
-  float ny = constrain(inYaw   / maxYawRateDegS,   -1.0f, 1.0f);
-
-  nr = expoCurve(nr, rpExpo)  * rpResponse;
-  np = expoCurve(np, rpExpo)  * rpResponse;
-  ny = expoCurve(ny, yawExpo) * yawResponse;
-
-  targetRoll  = constrain(nr * maxAngleDeg + trimRoll,   -maxAngleDeg, maxAngleDeg); // deg
-  targetPitch = constrain(np * maxAngleDeg + trimPitch,  -maxAngleDeg, maxAngleDeg); // deg
-  targetYaw   = constrain(ny * maxYawRateDegS + trimYaw, -maxYawRateDegS, maxYawRateDegS); // deg/s
+  // === Mapping input giống file .ino mẫu ===
+  targetRoll  = constrain(incomingJoystickData.XR + trimRoll, -30, 30); // deg
+  targetPitch = constrain(incomingJoystickData.YR + trimPitch, -30, 30); // deg
+  targetYaw   = constrain(incomingJoystickData.XL + trimYaw, -90, 90); // deg/s
 
   // --- Headless Mode transform ---
   if (headlessMode == true) {
@@ -1635,12 +1293,7 @@ void updateParameters(float dt) {
   yaw_rate_target = targetYaw;
   yaw_setpoint += yaw_rate_target * dt;
 
-  float rawAltitudeRate = constrain((incomingJoystickData.YL * 0.01f), -maxAltRateMps, maxAltRateMps); // m/s
-  // Apply expo + response
-  float na = constrain(rawAltitudeRate / maxAltRateMps, -1.0f, 1.0f);
-  na = expoCurve(na, altExpo) * altResponse;
-  rawAltitudeRate = constrain(na * maxAltRateMps, -maxAltRateMps, maxAltRateMps);
-
+  float rawAltitudeRate = constrain(incomingJoystickData.YL * 0.01f, -5.0f, 5.0f); // m/s
 
   // Slew-rate limit: 
   static float limitedAltitudeRate = 0;  
@@ -1884,17 +1537,15 @@ static void drone_setup(){
 }
 
 static void drone_loop(){
-  // ---------------------- WEB SERVER (TUNING vs TELEMETRY) ----------------------
-  // webCommand (từ Controller): 1 = bật UI tuning (an toàn: DISARM), 0 = chế độ bay bình thường
-  // Khi đang bay: tự bật Web UI telemetry để xem dữ liệu (UI tuning sẽ bị khóa).
-  bool wantTelemetryUI = (Armed || OnFlying);   // ưu tiên khi ARMED/đang bay
-  bool wantTuningUI    = (!wantTelemetryUI) && (incomingJoystickData.webCommand != 0);
-  bool wantAnyWeb      = wantTelemetryUI || wantTuningUI;
-
-  if (wantAnyWeb && !webServerRunning) {
-    startWebServer();
-  } else if (!wantAnyWeb && webServerRunning) {
-    stopWebServer();
+  // ---------------------- WEB SERVER (giống .ino mẫu) ----------------------
+  if (incomingJoystickData.webCommand != lastWebCommand) {
+    if (incomingJoystickData.webCommand && !webServerRunning) {
+      startWebServer();
+    } 
+    else if (!incomingJoystickData.webCommand && webServerRunning) {
+      stopWebServer();
+    }
+    lastWebCommand = incomingJoystickData.webCommand;
   }
 
   if (webServerRunning) {
@@ -1994,9 +1645,8 @@ static void drone_loop(){
   // ---------------------- FLIGHT CONTROL ----------------------
   updateParameters(innerDt);
   FlightController();
-  
-  bool tuningLocked = (incomingJoystickData.webCommand != 0); // tuning mode: safety lock motors
-  if (!tuningLocked) {
+
+  if (!incomingJoystickData.webCommand && !webServerRunning) {
     if (Armed && !OnFlying) {
       if (!initial_altitude && !initial_yaw) {
         altitude_baseline = bmp.readAltitude(1013.25);
@@ -2031,37 +1681,12 @@ static void drone_loop(){
 #include "MeblockDrone.h"
 
 void MeblockDrone::begin(const MeblockDroneConfig& cfg){
-  // ---------------- WiFi / IP ----------------
+  // SoftAP config
   g_apSsid = cfg.apSsid ? cfg.apSsid : g_apSsid;
   g_apPass = cfg.apPass ? cfg.apPass : g_apPass;
   apIP     = cfg.apIP;
 
-  // ---------------- Default tuning overrides ----------------
-  // (Giữ logic bay, chỉ override giá trị khởi tạo nếu user muốn)
-  if (cfg.baseSpeed >= 0) baseSpeed = cfg.baseSpeed;
-  if (cfg.integralLimit >= 0) integralLimit = cfg.integralLimit;
-
-  if (!isnan(cfg.range_altitude)) range_altitude = cfg.range_altitude;
-  if (!isnan(cfg.maxRateChange))  maxRateChange  = cfg.maxRateChange;
-
-  if (!isnan(cfg.maxAngleDeg))    maxAngleDeg    = cfg.maxAngleDeg;
-  if (!isnan(cfg.maxYawRateDegS)) maxYawRateDegS = cfg.maxYawRateDegS;
-  if (!isnan(cfg.maxAltRateMps))  maxAltRateMps  = cfg.maxAltRateMps;
-
-  if (!isnan(cfg.rpResponse))     rpResponse     = cfg.rpResponse;
-  if (!isnan(cfg.yawResponse))    yawResponse    = cfg.yawResponse;
-  if (!isnan(cfg.altResponse))    altResponse    = cfg.altResponse;
-
-  if (!isnan(cfg.rpExpo))         rpExpo         = cfg.rpExpo;
-  if (!isnan(cfg.yawExpo))        yawExpo        = cfg.yawExpo;
-  if (!isnan(cfg.altExpo))        altExpo        = cfg.altExpo;
-
-  if (!isnan(cfg.kff_roll))       kff_roll       = cfg.kff_roll;
-  if (!isnan(cfg.kff_pitch))      kff_pitch      = cfg.kff_pitch;
-  if (!isnan(cfg.kff_yaw))        kff_yaw        = cfg.kff_yaw;
-  if (!isnan(cfg.kff_altitude))   kff_altitude   = cfg.kff_altitude;
-
-  // ---------------- Run original setup ----------------
+  // Run original setup
   drone_setup();
 }
 

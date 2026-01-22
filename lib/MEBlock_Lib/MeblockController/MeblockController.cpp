@@ -15,7 +15,7 @@
 #define SWR_PIN 5 //5 26
 
 // ==== WiFi Config ====
-char ssid[33] = "MEDrone Controller V1";
+char ssid[33] = "Controller Calibration";
 char password[65] = "12345678";
 IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
@@ -55,23 +55,21 @@ struct JoyData {
 };
 
 // ==== Sci-Fi Style HTML Page ====
-const char htmlPage[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
+const char htmlPage[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>MEDrone Controller Web V1</title>
+<title>Controller Calibration</title>
 <style>
   :root{
     --bg0:#0b2a4b;
     --bg1:#0a2240;
     --card:#10365f;
-    --card2:#0f2f54;
     --stroke:rgba(255,255,255,.10);
     --stroke2:rgba(255,255,255,.16);
     --text:#ffffff;
-    --muted:rgba(255,255,255,.70);
+    --muted:rgba(255,255,255,.72);
     --muted2:rgba(255,255,255,.55);
     --primary:#2f7dff;
     --primary2:#1b5fd6;
@@ -88,156 +86,165 @@ const char htmlPage[] PROGMEM = R"rawliteral(
     background: radial-gradient(1200px 600px at 15% 10%, rgba(47,125,255,.28), transparent 60%),
                 linear-gradient(180deg,var(--bg0),var(--bg1));
   }
-  .wrap{max-width:1200px;margin:0 auto;padding:14px}
+  .wrap{max-width:1120px;margin:0 auto;padding:12px}
   .card{
     background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
     border:1px solid var(--stroke);
     border-radius: var(--radius);
-    padding:14px;
+    padding:12px;
     box-shadow: 0 10px 30px rgba(0,0,0,.20);
   }
   .topbar{
-    display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:14px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 14px;
   }
-  .brand{font-size:20px;font-weight:800;letter-spacing:.2px}
+  .brand{font-size:18px;font-weight:900;letter-spacing:.2px;line-height:1.1}
   .sub{margin-top:4px;color:var(--muted);font-size:12px}
   .pill{
     background: var(--pill);
     border:1px solid var(--stroke2);
     padding:6px 10px;border-radius:999px;
-    color:var(--text);font-size:12px;font-weight:700;
+    color:var(--text);font-size:12px;font-weight:800;
+    white-space:nowrap;
   }
-  .tabs{display:flex;gap:8px;margin:12px 0}
+  .pillbtn{cursor:pointer; user-select:none}
+  .pillbtn:active{transform: translateY(1px)}
+  .topActions{display:flex;gap:8px;align-items:center}
+
+  .tabs{display:flex;gap:8px;margin:10px 0; flex-wrap:wrap}
   .tabbtn{
     border:1px solid var(--stroke2);
     background: rgba(0,0,0,.18);
     color:var(--text);
     padding:8px 12px;border-radius:10px;
-    cursor:pointer;font-weight:800;font-size:13px;
+    cursor:pointer;font-weight:900;font-size:13px;
   }
   .tabbtn.active{
     background: rgba(47,125,255,.22);
     border-color: rgba(47,125,255,.45);
   }
+
   .grid{
-    display:grid;gap:12px;align-items:start;
-    grid-template-columns: 1fr;
+    display:grid;gap:10px;align-items:start;
+    grid-template-columns: 420px 1fr;
   }
-  @media(min-width:860px){
-    .grid{grid-template-columns: minmax(0,1fr) 420px;}
+  @media (max-width: 980px){
+    .grid{grid-template-columns: 1fr}
   }
-  h3{margin:0 0 10px 0;font-size:15px;font-weight:900;letter-spacing:.2px}
-  .muted{color:var(--muted);font-size:12px;line-height:1.35}
-  .status{
+
+  h3{margin:0 0 8px 0;font-size:15px}
+  .muted{color:var(--muted);font-size:12px;line-height:1.45}
+  .note{
     margin-top:10px;
+    padding:10px;
+    border:1px dashed rgba(255,255,255,.18);
+    border-radius:12px;
+    background: rgba(0,0,0,.14);
     color:var(--muted);
     font-size:12px;
-    min-height: 18px;
   }
+  .note b{color:#fff}
 
   .formgrid{
-    display:grid;
-    grid-template-columns: repeat(2, minmax(0,1fr));
-    gap:10px;
-    margin-top:10px;
+    display:grid;gap:10px;
+    grid-template-columns: 1fr 1fr;
   }
-  .field label{
-    display:flex;gap:8px;align-items:baseline;
-    color:var(--muted);font-size:12px;margin:0 0 6px 2px;
-  }
-  .field label b{color:var(--text);font-weight:900}
+  .field label{display:block;margin-bottom:6px;color:var(--muted);font-size:12px}
   input{
     width:100%;
-    background: rgba(0,0,0,.18);
+    padding:10px 10px;
+    border-radius:10px;
     border:1px solid var(--stroke2);
-    border-radius:12px;
-    padding:10px 12px;
+    background: rgba(0,0,0,.18);
     color:var(--text);
     outline:none;
-    font-size:14px;
+    font-weight:800;
   }
-  input:focus{border-color: rgba(47,125,255,.55); box-shadow:0 0 0 3px rgba(47,125,255,.16)}
-  .btnrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  input::placeholder{color: rgba(255,255,255,.45); font-weight:700}
+  .btnrow{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
   .btn{
-    border:1px solid var(--stroke2);
+    border:1px solid transparent;
+    border-radius:12px;
+    padding:10px 12px;
+    font-weight:900;
+    cursor:pointer;
     background: rgba(0,0,0,.20);
     color:var(--text);
+  }
+  .btn.primary{background: linear-gradient(180deg, var(--primary), var(--primary2))}
+  .btn.danger{background: linear-gradient(180deg, var(--danger), var(--danger2))}
+  .btn:active{transform: translateY(1px)}
+  .status{
+    margin-top:12px;
     padding:10px 12px;
     border-radius:12px;
-    cursor:pointer;
-    font-weight:900;
-    font-size:13px;
-  }
-  .btn.primary{
-    background: rgba(47,125,255,.25);
-    border-color: rgba(47,125,255,.55);
-  }
-  .btn.primary:hover{background: rgba(47,125,255,.33)}
-  .btn.danger{
-    background: rgba(179,58,58,.28);
-    border-color: rgba(179,58,58,.55);
-  }
-  .btn.danger:hover{background: rgba(179,58,58,.36)}
-
-  .tabpanel{display:none}
-  .tabpanel.active{display:block}
-
-  .rightStack{display:flex;flex-direction:column;gap:12px}
-
-  /* Telemetry */
-  .teleGrid{
-    display:grid;
-    grid-template-columns: repeat(2, minmax(0,1fr));
-    gap:10px;
-  }
-  .kv{
-    background: rgba(0,0,0,.18);
-    border:1px solid var(--stroke2);
-    border-radius:12px;
-    padding:10px 12px;
-  }
-  .kv .k{font-size:12px;color:var(--muted)}
-  .kv .v{font-size:20px;font-weight:900;margin-top:2px}
-  .mini{
-    margin-top:10px;
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:10px;
-  }
-  .joyBox{
+    border:1px solid var(--stroke);
     background: rgba(0,0,0,.16);
-    border:1px solid var(--stroke2);
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+    min-height: 40px;
+    display:flex;align-items:center;
+  }
+
+  /* Right side */
+  .rightStack{display:grid;gap:10px}
+  .teleGrid{
+    display:grid;grid-template-columns: repeat(4, 1fr);
+    gap:8px;margin-top:10px;
+  }
+  @media (max-width: 560px){ .teleGrid{grid-template-columns: repeat(2, 1fr)} }
+  .kv{
+    border:1px solid var(--stroke);
+    border-radius:12px;
+    padding:10px 10px;
+    background: rgba(0,0,0,.16);
+  }
+  .k{color:var(--muted2);font-size:11px;font-weight:900}
+  .v{font-size:18px;font-weight:1000;letter-spacing:.3px}
+
+  .mini{display:grid;grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px}
+  @media (max-width: 560px){ .mini{grid-template-columns: 1fr} }
+
+  .joyBox{
+    border:1px solid var(--stroke);
     border-radius:12px;
     padding:10px;
+    background: rgba(0,0,0,.14);
   }
-  .joyTitle{font-weight:900;font-size:12px;color:var(--muted);margin:0 0 8px 0}
+  .joyTitle{font-weight:1000; font-size:13px; margin-bottom:8px}
   .pad{
     position:relative;
-    width:170px;height:170px;margin:0 auto;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.18);
-    background: radial-gradient(circle at 50% 50%, rgba(47,125,255,.22), rgba(0,0,0,.05) 60%, rgba(0,0,0,0) 72%);
+    width:160px; height:160px;
+    border-radius:14px;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.06), rgba(0,0,0,.18));
+    border:1px solid rgba(255,255,255,.12);
+    margin: 0 auto 8px auto;
+    overflow:hidden;
   }
   .centerDot{
     position:absolute;left:50%;top:50%;
-    width:10px;height:10px;margin-left:-5px;margin-top:-5px;
-    border-radius:999px;background: rgba(255,255,255,.55);
+    width:8px;height:8px;border-radius:999px;
+    background: rgba(255,255,255,.55);
+    transform: translate(-50%,-50%);
   }
   .handle{
     position:absolute;left:50%;top:50%;
-    width:26px;height:26px;margin-left:-13px;margin-top:-13px;
-    border-radius:999px;
-    background: rgba(47,125,255,.95);
-    box-shadow:0 0 0 3px rgba(47,125,255,.20);
-    transition: transform .08s linear;
+    width:18px;height:18px;border-radius:999px;
+    background: rgba(47,125,255,.9);
+    border:1px solid rgba(255,255,255,.25);
+    transform: translate(0px,0px);
   }
   .miniNums{
-    margin-top:8px;
-    display:grid;grid-template-columns: repeat(3, 1fr);gap:8px;
-    font-size:12px;color:var(--muted);
+    display:grid;grid-template-columns: repeat(3,1fr);
+    gap:6px;
+    font-size:11px;
+    color:var(--muted);
   }
-  .miniNums b{color:var(--text);font-weight:900}
+  .miniNums b{color:#fff}
+
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
 </style>
 </head>
 
@@ -245,28 +252,37 @@ const char htmlPage[] PROGMEM = R"rawliteral(
   <div class="wrap">
     <div class="card topbar">
       <div>
-        <div class="brand">MEDrone Controller Web V1</div>
+        <div class="brand" data-i18n="brand">Controller Calibration</div>
         <div class="sub">
-          Receiver MAC: <b id="rxMac">--:--:--:--:--:--</b> &nbsp;·&nbsp; AP: <b>192.168.4.1</b>
+          <span data-i18n="receiverMac">Receiver MAC</span>: <b id="rxMac">--:--:--:--:--:--</b> &nbsp;·&nbsp; AP: <b>192.168.4.1</b>
         </div>
       </div>
-      <div class="pill">Controller UI</div>
+      <div class="topActions">
+        <button class="pill pillbtn" id="langBtn" title="Language">VI</button>
+        <div class="pill">Controller UI</div>
+      </div>
     </div>
 
     <div class="tabs">
-      <button class="tabbtn active" data-tab="map">Mapping</button>
-      <button class="tabbtn" data-tab="mac">MAC</button>
-      <button class="tabbtn" data-tab="help">Hướng dẫn</button>
+      <button class="tabbtn active" data-tab="map" data-i18n="tabMapping">Mapping</button>
+      <button class="tabbtn" data-tab="mac" data-i18n="tabMac">MAC</button>
+      <button class="tabbtn" data-tab="help" data-i18n="tabHelp">Hướng dẫn</button>
     </div>
 
     <div class="grid">
       <!-- LEFT: Settings -->
       <div class="card">
         <div id="tab-map" class="tabpanel active">
-          <h3>Mapping Parameters</h3>
-          <div class="muted">
-            Dùng để map raw ADC của joystick sang giá trị điều khiển (ví dụ: roll/pitch/yaw/throttle). Giá trị âm/dương quyết định chiều.
+          <h3 data-i18n="mapTitle">Mapping Parameters</h3>
+          <div class="muted" data-i18n="mapDesc">
+            Dùng để map raw ADC của joystick sang giá trị điều khiển (roll/pitch/yaw/throttle). Âm/dương quyết định chiều.
           </div>
+
+          <div class="note" data-i18n="mapNote">
+            <b>Mặc định theo firmware:</b> XL [-10..10], YL [-20..20], XR [-15..15], YR [15..-15] (đảo chiều).
+            <br/>Muốn đảo trục: đổi dấu (ví dụ YR Max = +15 và YR Min = -15).
+          </div>
+
           <div class="formgrid" style="margin-top:12px">
             <div class="field"><label><b>XL Min</b> map</label><input type="number" id="XLMinMap" /></div>
             <div class="field"><label><b>XL Max</b> map</label><input type="number" id="XLMaxMap" /></div>
@@ -278,33 +294,32 @@ const char htmlPage[] PROGMEM = R"rawliteral(
             <div class="field"><label><b>YR Max</b> map</label><input type="number" id="YRMaxMap" /></div>
           </div>
           <div class="btnrow">
-            <button class="btn primary" id="btnSaveMap">Lưu mapping</button>
+            <button class="btn primary" id="btnSaveMap" data-i18n="btnSaveMap">Lưu mapping</button>
           </div>
         </div>
 
         <div id="tab-mac" class="tabpanel">
-          <h3>Receiver MAC Address</h3>
-          <div class="muted">
+          <h3 data-i18n="macTitle">Receiver MAC Address</h3>
+          <div class="muted" data-i18n="macDesc">
             Dùng để controller gửi ESP-NOW tới drone. Ví dụ: <b>08:A6:F7:21:BA:6C</b>
           </div>
           <div class="formgrid" style="grid-template-columns: 1fr; margin-top:12px">
             <div class="field">
-              <label><b>Receiver MAC</b></label>
+              <label><b data-i18n="macLabel">Receiver MAC</b></label>
               <input type="text" id="macAddress" placeholder="08:A6:F7:21:BA:6C" />
             </div>
           </div>
           <div class="btnrow">
-            <button class="btn primary" id="btnSaveMac">Lưu MAC</button>
+            <button class="btn primary" id="btnSaveMac" data-i18n="btnSaveMac">Lưu MAC</button>
           </div>
         </div>
 
         <div id="tab-help" class="tabpanel">
-          <h3>Hướng dẫn nhanh</h3>
-          <div class="muted">
+          <h3 data-i18n="helpTitle">Hướng dẫn nhanh</h3>
+          <div class="muted" data-i18n="helpDesc">
             <b>Calib Center</b>: để joystick về giữa rồi bấm.<br/>
             <b>Save Min/Max</b>: đảo joystick hết biên 4 góc vài lần rồi bấm.<br/>
-            <b>Reset</b>: xoá toàn bộ giá trị đã lưu.<br/><br/>
-            UI này đã được đồng bộ style với Web Tuning trên drone.
+            <b>Reset</b>: xoá toàn bộ giá trị đã lưu.
           </div>
         </div>
 
@@ -314,7 +329,7 @@ const char htmlPage[] PROGMEM = R"rawliteral(
       <!-- RIGHT: Telemetry + Calib -->
       <div class="rightStack">
         <div class="card" id="telemetryCard">
-          <h3>Telemetry (live)</h3>
+          <h3 data-i18n="teleTitle">Telemetry (live)</h3>
 
           <div class="teleGrid">
             <div class="kv"><div class="k">XL</div><div class="v" id="xl">0</div></div>
@@ -325,35 +340,35 @@ const char htmlPage[] PROGMEM = R"rawliteral(
 
           <div class="mini">
             <div class="joyBox">
-              <div class="joyTitle">Left Joystick</div>
+              <div class="joyTitle" data-i18n="leftJoy">Left Joystick</div>
               <div class="pad">
                 <div class="centerDot"></div>
                 <div class="handle" id="leftHandle"></div>
               </div>
               <div class="miniNums">
-                <div>Min <b id="xl_min">0</b></div>
-                <div>C <b id="xl_center">0</b></div>
-                <div>Max <b id="xl_max">0</b></div>
-                <div>Min <b id="yl_min">0</b></div>
-                <div>C <b id="yl_center">0</b></div>
-                <div>Max <b id="yl_max">0</b></div>
+                <div><span data-i18n="min">Min</span> <b id="xl_min">0</b></div>
+                <div><span data-i18n="center">C</span> <b id="xl_center">0</b></div>
+                <div><span data-i18n="max">Max</span> <b id="xl_max">0</b></div>
+                <div><span data-i18n="min">Min</span> <b id="yl_min">0</b></div>
+                <div><span data-i18n="center">C</span> <b id="yl_center">0</b></div>
+                <div><span data-i18n="max">Max</span> <b id="yl_max">0</b></div>
                 <div>SWL <b id="swl">0</b></div>
               </div>
             </div>
 
             <div class="joyBox">
-              <div class="joyTitle">Right Joystick</div>
+              <div class="joyTitle" data-i18n="rightJoy">Right Joystick</div>
               <div class="pad">
                 <div class="centerDot"></div>
                 <div class="handle" id="rightHandle"></div>
               </div>
               <div class="miniNums">
-                <div>Min <b id="xr_min">0</b></div>
-                <div>C <b id="xr_center">0</b></div>
-                <div>Max <b id="xr_max">0</b></div>
-                <div>Min <b id="yr_min">0</b></div>
-                <div>C <b id="yr_center">0</b></div>
-                <div>Max <b id="yr_max">0</b></div>
+                <div><span data-i18n="min">Min</span> <b id="xr_min">0</b></div>
+                <div><span data-i18n="center">C</span> <b id="xr_center">0</b></div>
+                <div><span data-i18n="max">Max</span> <b id="xr_max">0</b></div>
+                <div><span data-i18n="min">Min</span> <b id="yr_min">0</b></div>
+                <div><span data-i18n="center">C</span> <b id="yr_center">0</b></div>
+                <div><span data-i18n="max">Max</span> <b id="yr_max">0</b></div>
                 <div>SWR <b id="swr">0</b></div>
               </div>
             </div>
@@ -361,14 +376,14 @@ const char htmlPage[] PROGMEM = R"rawliteral(
         </div>
 
         <div class="card" id="calibCard">
-          <h3>Calibration</h3>
-          <div class="muted">
-            Chỉ calib khi drone không bay. Calib Center: để tay thả tự nhiên ở giữa. Save Min/Max: đảo biên 4 góc.
+          <h3 data-i18n="calibTitle">Calibration</h3>
+          <div class="muted" data-i18n="calibDesc">
+            Chỉ calib khi drone không bay. Calib Center: thả tay tự nhiên ở giữa. Save Min/Max: đảo biên 4 góc.
           </div>
           <div class="btnrow">
-            <button class="btn primary" id="btnSaveMinMax">Save Min/Max</button>
-            <button class="btn primary" id="btnSaveCenter">Calibrate Center</button>
-            <button class="btn danger" id="btnResetAll">Reset All</button>
+            <button class="btn primary" id="btnSaveMinMax" data-i18n="btnSaveMinMax">Save Min/Max</button>
+            <button class="btn primary" id="btnSaveCenter" data-i18n="btnSaveCenter">Calibrate Center</button>
+            <button class="btn danger" id="btnResetAll" data-i18n="btnResetAll">Reset All</button>
           </div>
         </div>
       </div>
@@ -376,11 +391,115 @@ const char htmlPage[] PROGMEM = R"rawliteral(
   </div>
 
 <script>
+  const i18n = {
+    vi: {
+      brand: 'Hiệu chỉnh Controller',
+      receiverMac: 'Receiver MAC',
+      tabMapping: 'Mapping',
+      tabMac: 'MAC',
+      tabHelp: 'Hướng dẫn',
+      mapTitle: 'Thông số Mapping',
+      mapDesc: 'Dùng để map raw ADC của joystick sang giá trị điều khiển (roll/pitch/yaw/throttle). Âm/dương quyết định chiều.',
+      mapNote: '<b>Mặc định theo firmware:</b> XL [-10..10], YL [-20..20], XR [-15..15], YR [15..-15] (đảo chiều).<br/>Muốn đảo trục: đổi dấu (ví dụ YR Max = +15 và YR Min = -15).',
+      btnSaveMap: 'Lưu mapping',
+      macTitle: 'Địa chỉ MAC của Drone',
+      macDesc: 'Dùng để controller gửi ESP-NOW tới drone. Ví dụ: <b>08:A6:F7:21:BA:6C</b>',
+      macLabel: 'Receiver MAC',
+      btnSaveMac: 'Lưu MAC',
+      helpTitle: 'Hướng dẫn nhanh',
+      helpDesc: '<b>Calib Center</b>: để joystick về giữa rồi bấm.<br/><b>Save Min/Max</b>: đảo joystick hết biên 4 góc vài lần rồi bấm.<br/><b>Reset</b>: xoá toàn bộ giá trị đã lưu.',
+      teleTitle: 'Telemetry (live)',
+      leftJoy: 'Joystick Trái',
+      rightJoy: 'Joystick Phải',
+      calibTitle: 'Hiệu chỉnh',
+      calibDesc: 'Chỉ calib khi drone không bay. Calib Center: thả tay tự nhiên ở giữa. Save Min/Max: đảo biên 4 góc.',
+      btnSaveMinMax: 'Lưu Min/Max',
+      btnSaveCenter: 'Calib Center',
+      btnResetAll: 'Reset',
+      status: 'Trạng thái',
+      min: 'Min',
+      max: 'Max',
+      center: 'C',
+      ready: 'Sẵn sàng',
+      saved: 'Đã lưu',
+      savedMap: 'Đã lưu mapping',
+      savedMac: 'Đã lưu MAC',
+      savedMinMax: 'Đã lưu Min/Max',
+      savedCenter: 'Đã calib Center',
+      resetDone: 'Đã reset'
+    },
+    en: {
+      brand: 'Controller Calibration',
+      receiverMac: 'Receiver MAC',
+      tabMapping: 'Mapping',
+      tabMac: 'MAC',
+      tabHelp: 'Help',
+      mapTitle: 'Mapping Parameters',
+      mapDesc: 'Map raw joystick ADC values into control output (roll/pitch/yaw/throttle). Sign (+/-) sets direction.',
+      mapNote: '<b>Firmware defaults:</b> XL [-10..10], YL [-20..20], XR [-15..15], YR [15..-15] (inverted).<br/>To invert an axis: flip the sign (ex: YR Max = +15 and YR Min = -15).',
+      btnSaveMap: 'Save mapping',
+      macTitle: 'Drone Receiver MAC',
+      macDesc: 'Used for ESP-NOW target (drone). Example: <b>08:A6:F7:21:BA:6C</b>',
+      macLabel: 'Receiver MAC',
+      btnSaveMac: 'Save MAC',
+      helpTitle: 'Quick guide',
+      helpDesc: '<b>Calib Center</b>: release sticks to center, then click.<br/><b>Save Min/Max</b>: move sticks to all corners, then click.<br/><b>Reset</b>: clear all stored values.',
+      teleTitle: 'Telemetry (live)',
+      leftJoy: 'Left Joystick',
+      rightJoy: 'Right Joystick',
+      calibTitle: 'Calibration',
+      calibDesc: 'Calibrate only when the drone is not flying. Center: release to neutral. Min/Max: move to all corners.',
+      btnSaveMinMax: 'Save Min/Max',
+      btnSaveCenter: 'Calibrate Center',
+      btnResetAll: 'Reset All',
+      status: 'Status',
+      min: 'Min',
+      max: 'Max',
+      center: 'C',
+      ready: 'Ready',
+      saved: 'Saved',
+      savedMap: 'Mapping saved',
+      savedMac: 'MAC saved',
+      savedMinMax: 'Min/Max saved',
+      savedCenter: 'Center calibrated',
+      resetDone: 'All values reset'
+    }
+  };
+
+  let LANG = localStorage.getItem('lang') || 'vi';
+  let lastStatus = '--';
+
+  function t(key){
+    return (i18n[LANG] && i18n[LANG][key]) ? i18n[LANG][key] : key;
+  }
+
+  function applyLang(){
+    document.documentElement.lang = LANG;
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const k = el.getAttribute('data-i18n');
+      const val = t(k);
+      el.innerHTML = val;
+    });
+    const btn = document.getElementById('langBtn');
+    if(btn) btn.textContent = (LANG === 'vi') ? 'VI' : 'EN';
+    // refresh status label
+    setStatus(lastStatus, true);
+  }
+
   const statusEl = document.getElementById('status');
 
-  function setStatus(msg){
-    statusEl.textContent = 'Status: ' + msg;
+  function setStatus(msg, keepRaw){
+    lastStatus = msg;
+    const label = t('status');
+    statusEl.textContent = label + ': ' + msg;
   }
+
+  // Language toggle
+  document.getElementById('langBtn')?.addEventListener('click', ()=>{
+    LANG = (LANG === 'vi') ? 'en' : 'vi';
+    localStorage.setItem('lang', LANG);
+    applyLang();
+  });
 
   // Tabs
   document.querySelectorAll('.tabbtn').forEach(btn=>{
@@ -431,26 +550,23 @@ const char htmlPage[] PROGMEM = R"rawliteral(
       params.append(k, (document.getElementById(k)?.value || ''));
     });
     fetch('/save_map?' + params.toString())
-      .then(r=>r.text()).then(t=>setStatus(t || 'Saved'));
+      .then(()=>setStatus(t('savedMap')));
   }
 
   function saveMac(){
     const mac = (document.getElementById('macAddress')?.value || '').trim();
     fetch('/save_mac?mac=' + encodeURIComponent(mac))
-      .then(r=>r.text()).then(t=>{
-        setStatus(t || 'MAC saved');
-        loadMac();
-      });
+      .then(()=>{ setStatus(t('savedMac')); loadMac(); });
   }
 
   function saveMinMax(){
-    fetch('/save_minmax').then(()=>setStatus('Min/Max saved'));
+    fetch('/save_minmax').then(()=>setStatus(t('savedMinMax')));
   }
   function saveCenter(){
-    fetch('/save_center').then(()=>setStatus('Center calibrated'));
+    fetch('/save_center').then(()=>setStatus(t('savedCenter')));
   }
   function resetAll(){
-    fetch('/reset_values').then(()=>setStatus('All values reset'));
+    fetch('/reset_values').then(()=>setStatus(t('resetDone')));
   }
 
   document.getElementById('btnSaveMap')?.addEventListener('click', saveMap);
@@ -461,15 +577,15 @@ const char htmlPage[] PROGMEM = R"rawliteral(
 
   // Init
   window.addEventListener('load', ()=>{
+    applyLang();
     loadMap();
     loadMac();
-    setStatus('Ready');
+    setStatus(t('ready'));
   });
 
   // Telemetry refresh
   setInterval(()=>{
     fetch('/data').then(r=>r.json()).then(d=>{
-      // Main
       document.getElementById('xl').textContent = d.XL;
       document.getElementById('yl').textContent = d.YL;
       document.getElementById('swl').textContent = d.SWL;
@@ -477,16 +593,6 @@ const char htmlPage[] PROGMEM = R"rawliteral(
       document.getElementById('xr').textContent = d.XR;
       document.getElementById('yr').textContent = d.YR;
       document.getElementById('swr').textContent = d.SWR;
-
-      // min/max/center
-      ['xl_min','xl_max','yl_min','yl_max','xr_min','xr_max','yr_min','yr_max',
-       'xl_center','yl_center','xr_center','yr_center'].forEach(id=>{
-        if(document.getElementById(id)){
-          const key = id.replace('xl','XL').replace('yl','YL').replace('xr','XR').replace('yr','YR')
-                        .replace('_min','_min').replace('_max','_max').replace('_center','_center');
-          // d has exact keys like XL_min etc
-        }
-      });
 
       document.getElementById('xl_min').textContent = d.XL_min;
       document.getElementById('xl_max').textContent = d.XL_max;
@@ -631,6 +737,13 @@ void loadStoredValues() {
 }
 
 void loadMapValues() {
+  // ===== Mapping output values (DEFAULTS MATCH ControllerDragonFlySpirit_fixed.ino) =====
+  // These values define the OUTPUT range after deadzone removal and scaling, then sent via ESP-NOW.
+  // Notes:
+  // - XL / XR are inverted in code (a '-' sign is applied), so sign here affects final direction.
+  // - To invert an axis, simply swap the sign (example: default YR is inverted by using Max=-15, Min=+15).
+  // Recommended defaults:
+  //   XL: -10..+10, YL: -20..+20, XR: -15..+15, YR: +15..-15 (inverted)
   prefs.begin("map", true);
   XLMinMap = prefs.getInt("XLMinMap", -10);
   XLMaxMap = prefs.getInt("XLMaxMap", 10);

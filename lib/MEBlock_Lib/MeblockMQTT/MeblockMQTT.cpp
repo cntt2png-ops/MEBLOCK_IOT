@@ -1,4 +1,4 @@
-#include "MeblockMQTT.h"
+#include "MeblockMQTT_dev.h"
 
 // ===== Preset server MeBlock (dùng trong connect_meblock) =====
 static const char* MEBLOCK_SERVER = "103.195.239.8";
@@ -37,7 +37,6 @@ bool MeBlockMQTT::connect_broker(const char* server, uint16_t port,
 }
 
 bool MeBlockMQTT::connect_meblock(uint16_t port) {
-  // dùng preset => hết warning "defined but not used"
   return connect_broker(MEBLOCK_SERVER, port, MEBLOCK_USER, MEBLOCK_PASS);
 }
 
@@ -45,26 +44,68 @@ void MeBlockMQTT::connect_dashboard(const char* username) {
   _username = username ? username : "";
 }
 
+void MeBlockMQTT::connect_dashboard(const char* username, const char* device_password) {
+  _username = username ? username : "";
+  _devicePassword = device_password ? device_password : "";
+}
+
+void MeBlockMQTT::set_device_password(const char* device_password) {
+  _devicePassword = device_password ? device_password : "";
+}
+
+String MeBlockMQTT::normalizeChannel_(const char* channel) const {
+  if (!channel) return "";
+  String s = String(channel);
+  s.trim();
+  if (!s.length()) return "";
+
+  auto isAllDigits = [&](const String& x) -> bool {
+    if (!x.length()) return false;
+    for (int i = 0; i < x.length(); i++) {
+      if (!isDigit(x[i])) return false;
+    }
+    return true;
+  };
+
+  // "1" -> "M1"
+  if (isAllDigits(s)) return "M" + s;
+
+  // "m1"/"M1" -> "M1"
+  // "v1"/"V1" -> "M1" (map legacy)
+  if (s.length() >= 2) {
+    char c0 = s[0];
+    String rest = s.substring(1);
+    if (isAllDigits(rest)) {
+      if (c0 == 'm' || c0 == 'M') return "M" + rest;
+      if (c0 == 'v' || c0 == 'V') return "M" + rest;
+    }
+  }
+
+  // fallback giữ nguyên (để không phá trường hợp channel đặc biệt)
+  return s;
+}
+
 bool MeBlockMQTT::on_receive_message(const char* channel, const char* action, MsgCallback cb) {
   if (!_username.length()) return false;
   if (!channel || !action || !cb) return false;
 
-  // tìm slot trống
   int idx = -1;
   for (int i = 0; i < MAX_HANDLERS; i++) {
     if (!_handlers[i].used) { idx = i; break; }
   }
   if (idx < 0) return false;
 
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
+
   _handlers[idx].used = true;
-  _handlers[idx].channel = channel;
+  _handlers[idx].channel = ch;       // store normalized
   _handlers[idx].action  = action;
   _handlers[idx].cb      = cb;
 
-  // subscribe topic command
-  _subTopics[idx] = topicCommand_(channel);
-  if (!ensureMqttConnected_()) return false;
+  _subTopics[idx] = topicCommand_(ch.c_str());
 
+  if (!ensureMqttConnected_()) return false;
   return _mqtt.subscribe(_subTopics[idx].c_str());
 }
 
@@ -72,14 +113,18 @@ bool MeBlockMQTT::send_value(const char* channel, const String& value, bool reta
   if (!_username.length() || !channel) return false;
   if (!ensureMqttConnected_()) return false;
 
-  JsonDocument doc;
-  doc["value"] = value;
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
 
-  char buf[256];
+  StaticJsonDocument<256> doc;
+  doc["value"] = value;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
+
+  char buf[384];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   if (n == 0) return false;
 
-  String topic = topicData_(channel);
+  String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, retained);
 }
 
@@ -87,14 +132,38 @@ bool MeBlockMQTT::send_value(const char* channel, float value, bool retained) {
   if (!_username.length() || !channel) return false;
   if (!ensureMqttConnected_()) return false;
 
-  JsonDocument doc;
-  doc["value"] = value;
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
 
-  char buf[256];
+  StaticJsonDocument<256> doc;
+  doc["value"] = value;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
+
+  char buf[384];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   if (n == 0) return false;
 
-  String topic = topicData_(channel);
+  String topic = topicData_(ch.c_str());
+  return _mqtt.publish(topic.c_str(), buf, retained);
+}
+
+// FIX: overload cho double để tránh ambiguous (double có thể match float/int/bool)
+bool MeBlockMQTT::send_value(const char* channel, double value, bool retained) {
+  if (!_username.length() || !channel) return false;
+  if (!ensureMqttConnected_()) return false;
+
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
+
+  StaticJsonDocument<256> doc;
+  doc["value"] = value;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
+
+  char buf[384];
+  size_t n = serializeJson(doc, buf, sizeof(buf));
+  if (n == 0) return false;
+
+  String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, retained);
 }
 
@@ -102,14 +171,18 @@ bool MeBlockMQTT::send_value(const char* channel, int value, bool retained) {
   if (!_username.length() || !channel) return false;
   if (!ensureMqttConnected_()) return false;
 
-  JsonDocument doc;
-  doc["value"] = value;
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
 
-  char buf[256];
+  StaticJsonDocument<256> doc;
+  doc["value"] = value;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
+
+  char buf[384];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   if (n == 0) return false;
 
-  String topic = topicData_(channel);
+  String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, retained);
 }
 
@@ -117,14 +190,18 @@ bool MeBlockMQTT::send_value(const char* channel, bool value, bool retained) {
   if (!_username.length() || !channel) return false;
   if (!ensureMqttConnected_()) return false;
 
-  JsonDocument doc;
-  doc["value"] = value;
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
 
-  char buf[256];
+  StaticJsonDocument<256> doc;
+  doc["value"] = value;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
+
+  char buf[384];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   if (n == 0) return false;
 
-  String topic = topicData_(channel);
+  String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, retained);
 }
 
@@ -132,17 +209,21 @@ bool MeBlockMQTT::send_sensor_data(const char* channel, float temp, float hum, i
   if (!_username.length() || !channel) return false;
   if (!ensureMqttConnected_()) return false;
 
-  JsonDocument doc;
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
+
+  StaticJsonDocument<384> doc;
   doc["temp"] = temp;
   doc["hum"]  = hum;
   if (bat >= 0) doc["bat"] = bat;
   if (ts  >= 0) doc["ts"]  = ts;
+  if (_devicePassword.length()) doc["password"] = _devicePassword;
 
-  char buf[384];
+  char buf[512];
   size_t n = serializeJson(doc, buf, sizeof(buf));
   if (n == 0) return false;
 
-  String topic = topicData_(channel);
+  String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, false);
 }
 
@@ -167,20 +248,32 @@ void MeBlockMQTT::handleMqttMessage_(const String& topic, const byte* payload, u
   if (!parseTopic_(topic, tUser, tChannel, tTail)) return;
   if (tTail != "command") return;
 
-  JsonDocument doc;
+  // normalize channel từ topic (V1 -> M1, "1" -> M1)
+  String chNorm = normalizeChannel_(tChannel.c_str());
+
+  StaticJsonDocument<384> doc;
   DeserializationError err = deserializeJson(doc, payload, length);
   if (err) return;
 
+  // ===== PASSWORD CHECK (NEW) =====
+  if (_devicePassword.length()) {
+    JsonVariant p = doc["password"];
+    String recvPass = jsonValueToString_(p);
+    if (!recvPass.length() || recvPass != _devicePassword) {
+      // sai pass => bỏ qua (giống code bạn)
+      return;
+    }
+  }
+
   String action = doc["action"] | "";
   JsonVariant v = doc["value"];
-
   String valueStr = jsonValueToString_(v);
 
   // dispatch theo (channel, action)
   for (int i = 0; i < MAX_HANDLERS; i++) {
     if (!_handlers[i].used || !_handlers[i].cb) continue;
-    if (_handlers[i].channel == tChannel && _handlers[i].action == action) {
-      _handlers[i].cb(valueStr, action, tChannel, tUser);
+    if (_handlers[i].channel == chNorm && _handlers[i].action == action) {
+      _handlers[i].cb(valueStr, action, chNorm, tUser);
     }
   }
 }
@@ -207,27 +300,26 @@ void MeBlockMQTT::resubscribeAll_() {
 }
 
 String MeBlockMQTT::topicData_(const char* channel) const {
-  // meblock/{username}/{channel}/data
+  String ch = normalizeChannel_(channel);
   String t = "meblock/";
   t += _username;
   t += "/";
-  t += channel;
+  t += ch;
   t += "/data";
   return t;
 }
 
 String MeBlockMQTT::topicCommand_(const char* channel) const {
-  // meblock/{username}/{channel}/command
+  String ch = normalizeChannel_(channel);
   String t = "meblock/";
   t += _username;
   t += "/";
-  t += channel;
+  t += ch;
   t += "/command";
   return t;
 }
 
 bool MeBlockMQTT::parseTopic_(const String& topic, String& outUsername, String& outChannel, String& outTail) const {
-  // expect: meblock/{username}/{channel}/{tail}
   int p1 = topic.indexOf('/');
   if (p1 < 0) return false;
   String head = topic.substring(0, p1);
@@ -251,7 +343,6 @@ String MeBlockMQTT::jsonValueToString_(JsonVariant v) const {
   if (v.is<long>())        return String(v.as<long>());
   if (v.is<double>())      return String(v.as<double>());
 
-  // fallback: serialize value node
   String out;
   serializeJson(v, out);
   return out;
@@ -261,10 +352,13 @@ String MeBlockMQTT::makeClientId_(const char* prefix) const {
   uint64_t mac = ESP.getEfuseMac();
   char buf[40];
 
-  // FIX warning format: dùng %08lX cho unsigned long
   unsigned int hi = (unsigned int)((mac >> 32) & 0xFFFF);
   unsigned long lo = (unsigned long)(mac & 0xFFFFFFFFUL);
 
   snprintf(buf, sizeof(buf), "%s-%04X%08lX", prefix ? prefix : "MEBLOCK", hi, lo);
   return String(buf);
 }
+
+// Global instance cho Blockly/Sketch dùng trực tiếp: mqtt.xxx()
+// Lưu ý: KHÔNG khai báo lại `MeBlockMQTT mqtt;` ở sketch để tránh multiple definition.
+MeBlockMQTT mqtt;

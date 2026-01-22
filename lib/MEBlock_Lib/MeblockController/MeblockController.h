@@ -3,7 +3,7 @@
 #include <WiFi.h>
 
 struct MeblockControllerConfig {
-  const char* apSsid = "MEDrone Controller V1";
+  const char* apSsid = "Controller Calibration";
   const char* apPass = "12345678";
   IPAddress apIP = IPAddress(192, 168, 4, 1);
 

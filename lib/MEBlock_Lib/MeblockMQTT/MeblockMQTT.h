@@ -12,7 +12,7 @@ public:
                                const String& channel,
                                const String& username);
 
-  // ===== Blocks API (giữ tương thích) =====
+  // ===== Blocks API =====
   bool connect_wifi(const char* ssid, const char* password, uint32_t timeout_ms = 20000);
 
   bool connect_broker(const char* server, uint16_t port,
@@ -20,31 +20,38 @@ public:
 
   bool connect_meblock(uint16_t port = 1883);
 
-  // chỉ set namespace username, không kèm channel
+  // set username (dashboard)
   void connect_dashboard(const char* username);
+
+  // NEW: set username + device_password
+  void connect_dashboard(const char* username, const char* device_password);
+
+  // NEW: set device password riêng
+  void set_device_password(const char* device_password);
 
   // đăng ký handler cho (channel, action) và tự subscribe topic command tương ứng
   bool on_receive_message(const char* channel, const char* action, MsgCallback cb);
 
-  // publish value lên /data
+  // publish value lên /data (tự đính kèm password nếu đã set)
   bool send_value(const char* channel, const String& value, bool retained = false);
   bool send_value(const char* channel, float value, bool retained = false);
+  // FIX: tránh lỗi ambiguous khi truyền số thực kiểu double (ví dụ 25.6)
+  bool send_value(const char* channel, double value, bool retained = false);
   bool send_value(const char* channel, int value, bool retained = false);
   bool send_value(const char* channel, bool value, bool retained = false);
 
-  // publish gói sensor lên /data (tuỳ bạn dùng)
+  // publish gói sensor lên /data (không phải format "value", nhưng vẫn kèm password)
   bool send_sensor_data(const char* channel, float temp, float hum, int bat = -1, long ts = -1);
 
   // loop + auto reconnect
   void check_message(bool auto_reconnect = true);
 
-  // FIX lỗi const PubSubClient::connected()
   bool is_connected();
 
 private:
   struct HandlerSlot {
     bool used = false;
-    String channel;
+    String channel;   // normalized: M1/M2...
     String action;
     MsgCallback cb = nullptr;
   };
@@ -63,10 +70,11 @@ private:
   // dashboard namespace
   String _username;
 
+  // NEW: device password
+  String _devicePassword;
+
   // handlers
   HandlerSlot _handlers[MAX_HANDLERS];
-
-  // subscribe cache (mỗi handler -> 1 topic command)
   String _subTopics[MAX_HANDLERS];
 
   // ===== internal =====
@@ -77,6 +85,9 @@ private:
 
   bool ensureMqttConnected_();
   void resubscribeAll_();
+
+  // NEW: normalize channel -> M1/M2...
+  String normalizeChannel_(const char* channel) const;
 
   String topicData_(const char* channel) const;
   String topicCommand_(const char* channel) const;
