@@ -31,7 +31,7 @@ import machine
 import ujson
 import ubinascii
 from umqtt.simple import MQTTClient
-
+import gc, time, machine
 _client = None
 
 _cfg = {
@@ -227,28 +227,91 @@ def _mqtt_callback(topic_b, payload_b):
 # =======================
 # Public API
 # =======================
-def connect_wifi(ssid, password, timeout_s=20):
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
+def connect_wifi(ssid, password, timeout_s=20, force_reinit=False):
+    import gc
+    global _wlan_sta, _wlan_ap
+    gc.collect()
+    # Tạo singleton để tránh tạo lại object WLAN nhiều lần
+    try:
+        _wlan_sta
+    except NameError:
+        _wlan_sta = network.WLAN(network.STA_IF)
+
+    try:
+        _wlan_ap
+    except NameError:
+        _wlan_ap = network.WLAN(network.AP_IF)
+
+    # Tắt AP để tiết kiệm RAM
+    try:
+        _wlan_ap.active(False)
+    except Exception:
+        pass
+
+    wlan = _wlan_sta
+
+    # Thu gom rác trước khi bật WiFi
+    gc.collect()
+
+    # Nếu muốn làm sạch trạng thái WiFi cũ
+    if force_reinit:
+        try:
+            wlan.disconnect()
+        except Exception:
+            pass
+        try:
+            wlan.active(False)
+        except Exception:
+            pass
+        time.sleep_ms(300)
+        gc.collect()
+
+    # Bật STA (có retry nếu báo Out of Memory)
+    try:
+        wlan.active(True)
+    except OSError as e:
+        # thử “tắt/bật” lại + gc
+        gc.collect()
+        try:
+            wlan.active(False)
+            time.sleep_ms(300)
+            wlan.active(True)
+        except Exception as e2:
+            print("WiFi FAIL (active):", e, e2)
+            return False
 
     if wlan.isconnected():
         return True
 
     print("Dang ket noi WiFi {}...".format(ssid), end="")
-    wlan.connect(ssid, password)
+
+    # Connect (có retry nếu Out of Memory)
+    try:
+        wlan.connect(ssid, password)
+    except OSError as e:
+        gc.collect()
+        try:
+            wlan.active(False)
+            time.sleep_ms(300)
+            wlan.active(True)
+            wlan.connect(ssid, password)
+        except Exception as e2:
+            print("\nWiFi connect FAIL:", e, e2)
+            return False
 
     t0 = time.time()
     while (not wlan.isconnected()) and (time.time() - t0 < timeout_s):
         print(".", end="")
         time.sleep(1)
-    print()
 
+    print()
     if wlan.isconnected():
         print("WiFi OK! IP:", wlan.ifconfig()[0])
         return True
 
     print("WiFi FAIL!")
     return False
+
 
 
 def connect_broker(server, port=1883, user=None, password=None, client_id=None, keepalive=60):
@@ -291,7 +354,7 @@ def connect_dashboard(username, password=None):
     """
     Subscribe wildcard:
       meblock/{username}/+/command
-    NEW::
+    NEW:
       - có thể truyền password để lọc command + tự kèm password khi gửi data
     """
     if not _client:
