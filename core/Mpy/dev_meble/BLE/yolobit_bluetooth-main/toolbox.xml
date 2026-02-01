@@ -1,0 +1,35 @@
+<xml xmlns="https://developers.google.com/blockly/xml" id="toolbox" style="display: none">
+  <category id="ble" name="BLUETOOTH" colour="#005a9e" icon="bluetooth">
+      <block type="yolobit_ble_start">
+        <value name="NAME">
+          <shadow type="text"><field name="TEXT">yolobit</field></shadow>
+        </value>
+      </block>
+      <block type="yolobit_ble_connect">
+        <value name="NAME">
+          <shadow type="text"><field name="TEXT">yolobit</field></shadow>
+        </value>
+      </block>
+      <block type="yolobit_ble_repl">
+        <value name="NAME">
+          <shadow type="text"><field name="TEXT">yolobit</field></shadow>
+        </value>
+      </block>
+      <block type="yolobit_ble_send">
+        <value name="message">
+          <shadow type="text"><field name="TEXT">thông tin</field></shadow>
+        </value>
+      </block>
+      <block type="yolobit_ble_send_namevalue">
+        <value name="name">
+          <shadow type="text"><field name="TEXT">thông tin</field></shadow>
+        </value>
+        <value name="value">
+          <shadow type="text"><field name="TEXT">giá trị</field></shadow>
+        </value>
+      </block>
+      <block type="yolobit_ble_on_receive_message"></block>
+      <block type="yolobit_ble_on_receive_number"></block>
+      <block type="yolobit_ble_on_receive_namevalue"></block>
+  </category>
+</xml>

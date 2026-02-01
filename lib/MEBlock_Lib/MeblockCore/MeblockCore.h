@@ -1,6 +1,7 @@
 // MeblockCore.h
 #pragma once
 #include <Arduino.h>
+#include "MeblockOnboard.h"
 
 /// Khởi tạo core: Serial + Double Reset Detector (DRD)
 /// Mặc định dùng baud 115200, có thể đổi nếu cần.

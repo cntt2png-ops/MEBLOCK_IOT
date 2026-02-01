@@ -54,11 +54,73 @@ _CHAN_PREFIX = "M"          # dùng M1/M2...
 _MAP_LEGACY_V = True        # map V1 -> M1
 
 # Callback registry
-# priority: (channel, action) -> (channel, "*") -> ("*", action) -> any
-_cb_exact = {}       # {(ch, action): cb}
-_cb_channel = {}     # {ch: cb}
-_cb_action = {}      # {action: cb}
-_cb_any = None       # cb
+# Exact match: (channel, action, value_key) -> cb
+# - No wildcard for on_receive_message()
+# - value_key is normalized string (e.g. "UP", "ON", "50", "#ff0000")
+_cb_exact_val = {}   # {(ch, action, vkey): cb}
+
+# Channel+Action match: (channel, action) -> cb
+_cb_channel_action = {}  # {(ch, action): cb}
+
+# Optional fallback APIs (keep for backward compatibility)
+_cb_action = {}      # {action: cb}  (any channel/value)
+_cb_any = None       # cb (receive any command)
+
+# Last received value storage (for read_action_value)
+# Key: (channel, action) -> last_value (soft-normalized)
+_last_action_value = {}  # {(ch, action): value}
+
+def _soft_int_value(v):
+    """If v looks like a number => return int. Else return v as-is."""
+    if v is None:
+        return None
+    # bool is subclass of int -> keep bool as-is
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float):
+        # soft: round then int
+        try:
+            return int(round(v))
+        except Exception:
+            return v
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return v
+        # integer?
+        try:
+            if (s[0] in "+-" and s[1:].isdigit()) or s.isdigit():
+                return int(s)
+        except Exception:
+            pass
+        # float?
+        try:
+            # accept "12.3", "-0.7"
+            fv = float(s)
+            return int(round(fv))
+        except Exception:
+            return v
+    return v
+
+def read_action_value(channel, action, default=None):
+    """
+    Read last received VALUE from a given (channel, action) from Dashboard commands.
+    - channel: "M1", 1, "V1"... (will be normalized to Mx)
+    - action : e.g. "DPAD_PRESS", "SLIDER_CHANGE", ...
+    Returns:
+      - last value
+      - if value is numeric (or numeric string) => returns int
+      - if never received => returns default (None if not provided)
+    """
+    ch = _normalize_channel(channel)
+    act = _normalize_action(action)
+    if act is None:
+        return default
+    return _last_action_value.get((ch, act), default)
+
+
 
 
 MEBLOCK_SERVER = "103.195.239.8"
@@ -101,6 +163,57 @@ def _normalize_channel(ch):
             return "{}{}".format(_CHAN_PREFIX, rest)
 
     return s
+
+
+def _normalize_action(a):
+    """Normalize action string to UPPERCASE."""
+    if a is None:
+        return None
+    try:
+        s = str(a).strip()
+    except Exception:
+        return None
+    return s.upper() if s else None
+
+
+def _normalize_value_key(v):
+    """Normalize VALUE to a comparable key (string)."""
+    if v is None:
+        return None
+
+    # bool is subclass of int, handle first
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+
+    if isinstance(v, int):
+        return str(v)
+
+    if isinstance(v, float):
+        try:
+            if int(v) == v:
+                return str(int(v))
+        except Exception:
+            pass
+        return str(v)
+
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        # hex color keep lowercase for stability
+        if s.startswith("#"):
+            return s.lower()
+        return s.upper()
+
+    # dict/list: stringify
+    try:
+        return ujson.dumps(v)
+    except Exception:
+        try:
+            return str(v)
+        except Exception:
+            return None
+
 
 def _make_client_id(prefix="ESP32"):
     try:
@@ -204,29 +317,49 @@ def _mqtt_callback(topic_b, payload_b):
     if params is None:
         params = {}
 
-    # Dispatch
-    cb = _cb_exact.get((channel, action))
-    if cb:
-        _call_cb(cb, value, action, channel, username, params, doc, topic)
+    # Dispatch (exact channel + action + value)
+    act = _normalize_action(action)
+    vkey = _normalize_value_key(value)
+
+    if (act is None) or (vkey is None):
         return
 
-    cb = _cb_channel.get(channel)
+    # store last value for read_action_value
+    _last_action_value[(channel, act)] = _soft_int_value(value)
+
+    cb = _cb_exact_val.get((channel, act, vkey))
     if cb:
-        _call_cb(cb, value, action, channel, username, params, doc, topic)
+        _call_cb(cb, value, act, channel, username, params, doc, topic)
         return
 
-    cb = _cb_action.get(action)
+    # Channel+Action match
+    cb = _cb_channel_action.get((channel, act))
     if cb:
-        _call_cb(cb, value, action, channel, username, params, doc, topic)
+        _call_cb(cb, value, act, channel, username, params, doc, topic)
+        return
+
+    # Fallback APIs (optional)
+    cb = _cb_action.get(act)
+    if cb:
+        _call_cb(cb, value, act, channel, username, params, doc, topic)
         return
 
     if _cb_any:
-        _call_cb(_cb_any, value, action, channel, username, params, doc, topic)
+        _call_cb(_cb_any, value, act, channel, username, params, doc, topic)
+        return
 
 
 # =======================
 # Public API
 # =======================
+def clear_callbacks():
+    """Clear all registered callbacks (useful in raw REPL)."""
+    global _cb_exact_val, _cb_channel_action, _cb_action, _cb_any
+    _cb_exact_val = {}
+    _cb_channel_action = {}
+    _cb_action = {}
+    _cb_any = None
+
 def connect_wifi(ssid, password, timeout_s=20, force_reinit=False):
     import gc
     global _wlan_sta, _wlan_ap
@@ -373,40 +506,56 @@ def connect_dashboard(username, password=None):
         return False
 
 
-def on_receive_message(channel, action=None, callback=None):
-    """
-    2 cách dùng:
-      - on_receive_message("M1", "BUTTON_PRESS", cb)
-      - on_receive_message("M1", cb)  (mọi action trên M1)
-      - on_receive_message("*", "BUTTON_PRESS", cb) (mọi channel, lọc action)
-    callback ưu tiên: cb(value, action, channel, username)
-    """
-    global _cb_any
 
-    # on_receive_message("M1", cb)
-    if callback is None and callable(action):
-        _cb_channel[_normalize_channel(channel)] = action
+def on_receive_message(channel, action, callback_or_value=None, callback=None):
+    """
+    Register callback by (channel, action) OR (channel, action, value).
+
+    New (recommended):
+        on_receive_message("M1", "SLIDER_CHANGE", cb)
+
+    Backward-compatible (exact value match):
+        on_receive_message("M1", "DPAD_PRESS", "UP", cb)
+
+    Callback signature:
+        cb(value, action, channel, username)
+    """
+    # Support both call styles:
+    # - 3 args: (channel, action, cb)
+    # - 4 args: (channel, action, value, cb)
+    if callback is None and callable(callback_or_value):
+        value = None
+        callback = callback_or_value
+    else:
+        value = callback_or_value
+
+    if callback is None or (not callable(callback)):
         return
 
-    # on_receive_message("*", "*", cb) -> any
-    if str(channel) == "*" and (action == "*" or action is None):
-        _cb_any = callback
+    ch = _normalize_channel(channel)
+    act = _normalize_action(action)
+    if act is None:
         return
 
-    # exact (channel, action)
-    if callback:
-        _cb_exact[(_normalize_channel(channel), str(action))] = callback
+    # If value is None => register by (channel, action)
+    if value is None:
+        _cb_channel_action[(ch, act)] = callback
+        return
 
+    # Else exact match by value (legacy)
+    vkey = _normalize_value_key(value)
+    if vkey is None:
+        return
+    _cb_exact_val[(ch, act, vkey)] = callback
 
 def on_receive_action(action, callback):
-    """Lọc theo action cho mọi channel."""
-    _cb_action[str(action)] = callback
-
-
-def on_receive_any(callback):
-    """Nhận mọi command."""
-    global _cb_any
-    _cb_any = callback
+    """Register callback by action (any channel/value)."""
+    if callback is None or (not callable(callback)):
+        return
+    act = _normalize_action(action)
+    if act is None:
+        return
+    _cb_action[act] = callback
 
 
 def check_message(auto_reconnect=True):
@@ -464,26 +613,26 @@ def reconnect(retry=3, delay_s=2):
     return False
 
 
-def _publish(topic, data_dict, retry_once=True):
+def _publish(topic, data_dict, retry_once=True, retained=False):
     global _client
     if not _client:
         return False
 
     try:
-        _client.publish(topic, ujson.dumps(data_dict))
+        _client.publish(topic, ujson.dumps(data_dict), retained)
         return True
     except Exception as e:
         print("Publish FAIL:", e)
         if retry_once and reconnect():
             try:
-                _client.publish(topic, ujson.dumps(data_dict))
+                _client.publish(topic, ujson.dumps(data_dict), retained)
                 return True
             except Exception as e2:
                 print("Publish retry FAIL:", e2)
         return False
 
 
-def send_value(channel, value, include_channel_field=False):
+def send_value(channel, value, include_channel_field=False, retained=False, **kwargs):
     """
     ESP -> Frontend (topic /data).
     Payload chuẩn theo bạn:
@@ -496,6 +645,11 @@ def send_value(channel, value, include_channel_field=False):
     topic = "meblock/{}/{}/data".format(_dashboard["username"], ch)
 
     payload = {"value": value}
+    # accept alias keywords: retain/retained
+    if "retain" in kwargs:
+        retained = bool(kwargs.get("retain"))
+    if "retained" in kwargs:
+        retained = bool(kwargs.get("retained"))
 
     # NEW: kèm password nếu có
     if _dashboard.get("password"):
@@ -504,29 +658,84 @@ def send_value(channel, value, include_channel_field=False):
     if include_channel_field:
         payload["channel"] = ch
 
-    return _publish(topic, payload)
+    return _publish(topic, payload, retained=retained)
+
+def send_string(channel, text, retained=False, **kwargs):
+    """Gửi chuỗi (text) lên /data. Hỗ trợ retained/retain keyword."""
+    # accept alias keywords
+    if "retain" in kwargs:
+        retained = bool(kwargs.get("retain"))
+    if "retained" in kwargs:
+        retained = bool(kwargs.get("retained"))
+    try:
+        s = text if isinstance(text, str) else str(text)
+    except Exception:
+        s = ""
+    return send_value(channel, s, retained=retained)
 
 
-def send_sensor_data(channel, temperature, humidity, battery=None, timestamp=None):
+
+# =======================
+# JOYSTICK helpers (generic)
+# direction = substring before '-'
+# distance  = substring after  '-'
+# examples: "UP-94", "UR-10", "J7-94", "LEFT-50"
+# =======================
+
+def _split_dir_dist(v):
     """
-    Gửi gói sensor lên /data (vẫn kèm password nếu có).
+    Split value like 'DIR-94' -> ('DIR', 94, True).
+    DIR can be any string (1..n chars).
+    Distance tries int -> float, else fail.
     """
-    if not _dashboard["username"]:
-        raise RuntimeError("Chua chon dashboard. Goi connect_dashboard(username, password) truoc.")
+    if v is None:
+        return "", None, False
+    if not isinstance(v, str):
+        try:
+            v = str(v)
+        except Exception:
+            return "", None, False
 
-    ch = _normalize_channel(channel)
-    topic = "meblock/{}/{}/data".format(_dashboard["username"], ch)
+    s = v.strip()
+    if not s or "-" not in s:
+        return "", None, False
 
-    payload = {
-        "temp": temperature,
-        "hum": humidity,
-    }
-    if battery is not None:
-        payload["bat"] = battery
-    if timestamp is not None:
-        payload["ts"] = timestamp
+    dir_part, dist_part = s.split("-", 1)
+    dir_part = dir_part.strip()
+    dist_part = dist_part.strip()
 
-    if _dashboard.get("password"):
-        payload["password"] = _dashboard["password"]
+    if not dir_part:
+        return "", None, False
 
-    return _publish(topic, payload)
+    # parse number (int first, then float)
+    try:
+        if dist_part.isdigit() or (dist_part.startswith("-") and dist_part[1:].isdigit()):
+            dist_num = int(dist_part)
+        else:
+            dist_num = float(dist_part)  # allows "94.5"
+        return dir_part, dist_num, True
+    except Exception:
+        return dir_part, None, False
+
+
+def joystick_dir(value, default=""):
+    """Return direction string before '-'."""
+    d, dist, ok = _split_dir_dist(value)
+    return d if ok else default
+
+
+def joystick_dist(value, default=-1):
+    """Return distance number after '-' (int/float)."""
+    d, dist, ok = _split_dir_dist(value)
+    return dist if ok and dist is not None else default
+
+
+def read_joystick_dir(channel, default=""):
+    v = read_action_value(channel, "JOYSTICK_MOVE", None)
+    return joystick_dir(v, default)
+
+
+def read_joystick_dist(channel, default=-1):
+    v = read_action_value(channel, "JOYSTICK_MOVE", None)
+    return joystick_dist(v, default)
+

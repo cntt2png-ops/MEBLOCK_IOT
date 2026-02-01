@@ -1,7 +1,6 @@
 // MeblockCore.cpp
 #include "MeblockCore.h"
 #include <Preferences.h>
-
 extern "C" {
   #include "esp_system.h"
   #include "esp_ota_ops.h"
@@ -146,7 +145,7 @@ void meblock_core_setup(uint32_t serialBaud) {
   Serial.begin(serialBaud);
   delay(200);
   Serial.println("\n[MEBLOCK_CORE] Init...");
-
+  OnboardRGB.begin();
   setupDoubleResetDetector();
 }
 

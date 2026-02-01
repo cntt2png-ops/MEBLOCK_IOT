@@ -1,0 +1,19 @@
+{
+    "name": "Bluetooth",
+    "description": "Mục mở rộng hỗ trợ sử dụng chức năng Bluetooth",
+    "libs": [
+        "ble_advertising.py",
+        "ble_simple_central.py",
+        "ble_uart_peripheral.py",
+        "ble_uart_repl.py"
+    ],
+    "blocks": [
+        "definition.js"
+    ],
+    "toolbox": "toolbox.xml",
+    "languages": {
+        "en": "languages/en.js",
+        "vi": "languages/vi.js"
+    },
+    "poster": "poster.png"
+}

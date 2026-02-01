@@ -108,6 +108,38 @@ bool MeBlockMQTT::on_receive_message(const char* channel, const char* action, Ms
   if (!ensureMqttConnected_()) return false;
   return _mqtt.subscribe(_subTopics[idx].c_str());
 }
+bool MeBlockMQTT::subscribe_command(const char* channel) {
+  if (!_username.length()) return false;
+  if (!channel) return false;
+
+  String ch = normalizeChannel_(channel);
+  if (!ch.length()) return false;
+
+  // avoid duplicate subscribe on same channel
+  String topic = topicCommand_(ch.c_str());
+  for (int i = 0; i < MAX_HANDLERS; i++) {
+    if (_handlers[i].used && _subTopics[i] == topic) {
+      if (!ensureMqttConnected_()) return false;
+      return _mqtt.subscribe(topic.c_str());
+    }
+  }
+
+  int idx = -1;
+  for (int i = 0; i < MAX_HANDLERS; i++) {
+    if (!_handlers[i].used) { idx = i; break; }
+  }
+  if (idx < 0) return false;
+
+  _handlers[idx].used = true;
+  _handlers[idx].channel = ch;
+  _handlers[idx].action  = "";      // no specific action
+  _handlers[idx].cb      = nullptr; // polling only
+
+  _subTopics[idx] = topic;
+
+  if (!ensureMqttConnected_()) return false;
+  return _mqtt.subscribe(_subTopics[idx].c_str());
+}
 
 bool MeBlockMQTT::send_value(const char* channel, const String& value, bool retained) {
   if (!_username.length() || !channel) return false;
@@ -126,6 +158,27 @@ bool MeBlockMQTT::send_value(const char* channel, const String& value, bool reta
 
   String topic = topicData_(ch.c_str());
   return _mqtt.publish(topic.c_str(), buf, retained);
+}
+
+
+
+// NEW: accept const char* and force string publish (avoid const char* -> bool overload trap)
+bool MeBlockMQTT::send_value(const char* channel, const char* value, bool retained) {
+  return send_value(channel, String(value ? value : ""), retained);
+}
+
+// NEW: explicit string API (wrapper)
+bool MeBlockMQTT::send_string(const char* channel, const String& text, bool retained) {
+  return send_value(channel, text, retained);
+}
+
+bool MeBlockMQTT::send_string(const char* channel, const char* text, bool retained) {
+  return send_value(channel, String(text ? text : ""), retained);
+}
+
+// Compatibility alias (older code): send_text()
+bool MeBlockMQTT::send_text(const char* channel, const char* text, bool retained) {
+  return send_string(channel, text, retained);
 }
 
 bool MeBlockMQTT::send_value(const char* channel, float value, bool retained) {
@@ -269,6 +322,9 @@ void MeBlockMQTT::handleMqttMessage_(const String& topic, const byte* payload, u
   JsonVariant v = doc["value"];
   String valueStr = jsonValueToString_(v);
 
+  // cache last value for polling APIs
+  storeLast_(chNorm, action, valueStr);
+
   // dispatch theo (channel, action)
   for (int i = 0; i < MAX_HANDLERS; i++) {
     if (!_handlers[i].used || !_handlers[i].cb) continue;
@@ -276,6 +332,84 @@ void MeBlockMQTT::handleMqttMessage_(const String& topic, const byte* payload, u
       _handlers[i].cb(valueStr, action, chNorm, tUser);
     }
   }
+}
+
+// ===== Last value cache (polling APIs) =====
+int MeBlockMQTT::findLast_(const String& channel, const String& action) const {
+  for (int i = 0; i < MAX_LAST; i++) {
+    if (_last[i].used && _last[i].channel == channel && _last[i].action == action) return i;
+  }
+  return -1;
+}
+
+void MeBlockMQTT::storeLast_(const String& channel, const String& action, const String& value) {
+  if (!channel.length() || !action.length()) return;
+
+  int idx = findLast_(channel, action);
+  if (idx < 0) {
+    // find empty slot
+    for (int i = 0; i < MAX_LAST; i++) {
+      if (!_last[i].used) { idx = i; break; }
+    }
+    // if full: overwrite the oldest (simple: overwrite slot 0)
+    if (idx < 0) idx = 0;
+    _last[idx].used = true;
+    _last[idx].channel = channel;
+    _last[idx].action  = action;
+  }
+
+  _last[idx].value = value;
+  _last[idx].ms = millis();
+}
+
+String MeBlockMQTT::read_action_value(const String& channel, const String& action, const String& def) {
+  String ch = normalizeChannel_(channel.c_str());
+  String ac = action;
+  ac.trim();
+  if (!ch.length() || !ac.length()) return def;
+
+  int idx = findLast_(ch, ac);
+  if (idx < 0) return def;
+  return _last[idx].value;
+}
+
+long MeBlockMQTT::read_action_value_int(const String& channel, const String& action, long def) {
+  String s = read_action_value(channel, action, "");
+  if (!s.length()) return def;
+  char* endp = nullptr;
+  long v = strtol(s.c_str(), &endp, 10);
+  if (endp == s.c_str()) return def;
+  return v;
+}
+
+String MeBlockMQTT::read_joystick_dir(const String& channel, const String& def) {
+  // Trả về chuỗi trước dấu "-" (hoặc ",")
+  String v = read_action_value(channel, "JOYSTICK_MOVE", "");
+  v.trim();
+  if (!v.length()) return def;
+  int sep = v.indexOf('-');
+  if (sep < 0) sep = v.indexOf(',');
+  if (sep < 0) return def;
+  String head = v.substring(0, sep);
+  head.trim();
+  return head.length() ? head : def;
+}
+
+int MeBlockMQTT::read_joystick_dist(const String& channel, int def) {
+  // Trả về số sau dấu "-" (hoặc ",")
+  String v = read_action_value(channel, "JOYSTICK_MOVE", "");
+  v.trim();
+  if (!v.length()) return def;
+  int sep = v.indexOf('-');
+  if (sep < 0) sep = v.indexOf(',');
+  if (sep < 0) return def;
+  String tail = v.substring(sep + 1);
+  tail.trim();
+  if (!tail.length()) return def;
+  char* endp = nullptr;
+  long val = strtol(tail.c_str(), &endp, 10);
+  if (endp == tail.c_str()) return def;
+  return (int)val;
 }
 
 bool MeBlockMQTT::ensureMqttConnected_() {
