@@ -4,6 +4,11 @@
 #
 # Key fix: write() returns the count of bytes accepted so os.dupterm()
 #          does NOT retry and spam-resend chunks.
+#
+# Added:
+# - expose the BLEUART instance used by REPL via get_uart()
+#   so main.py can attach additional RX callback (append=True)
+#   and can send data using uart.write(...)
 
 import io
 import os
@@ -13,19 +18,24 @@ from ble_uart_peripheral import BLEUART
 _MP_STREAM_POLL = const(3)
 _MP_STREAM_POLL_RD = const(0x0001)
 
+# ===== expose UART used by REPL =====
+_uart = None
+
+def get_uart():
+    return _uart
+
+
 class BLEUARTRepl(io.IOBase):
     def __init__(self, uart: BLEUART):
         self._uart = uart
         # wake dupterm when data arrives
         try:
-            self._uart.irq(self._on_rx)
+            self._uart.irq(self._on_rx)  # keep compatibility (single handler for REPL)
         except Exception:
-            # older helpers may not have irq(); safe to ignore
             pass
 
     # ===== dupterm hooks =====
     def read(self, sz=None):
-        # Return up to sz bytes; None/0 => non-blocking
         return self._uart.read(sz)
 
     def readinto(self, buf):
@@ -44,24 +54,21 @@ class BLEUARTRepl(io.IOBase):
         nb = 0
         mv = memoryview(buf)
         for i in range(0, len(mv), 20):
-            chunk = mv[i:i+20]
+            chunk = mv[i:i + 20]
             try:
                 self._uart.write(chunk)   # may return None
                 nb += len(chunk)
             except Exception:
-                # swallow transient radio errors; report bytes we *intended* to push
                 pass
         return nb
 
     def ioctl(self, op, arg):
-        # allow VM to poll for input
         if op == _MP_STREAM_POLL:
             if self._uart.any():
                 return _MP_STREAM_POLL_RD
             return 0
         return 0
 
-    # ===== internal =====
     def _on_rx(self):
         try:
             os.dupterm_notify(None)
@@ -70,12 +77,14 @@ class BLEUARTRepl(io.IOBase):
 
 
 def start(name="MEBLOCK-TOPKID"):
-    # Create BLEUART and attach dupterm stream
+    global _uart
     from bluetooth import BLE
     ble = BLE()
     uart = BLEUART(ble, name=name)
+    _uart = uart
     os.dupterm(BLEUARTRepl(uart))
     print("[BLEUART] REPL started as:", name)
+
 
 if __name__ == "__main__":
     start()
