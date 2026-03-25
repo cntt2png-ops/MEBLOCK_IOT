@@ -1,9 +1,9 @@
 #include "MeblockMQTT.h"
 
 // ===== Preset server MeBlock (dùng trong connect_meblock) =====
-static const char* MEBLOCK_SERVER = "103.195.239.8";
+static const char* MEBLOCK_SERVER = "103.173.226.204";
 static const char* MEBLOCK_USER   = "admin";
-static const char* MEBLOCK_PASS   = "Leto@n1989";
+static const char* MEBLOCK_PASS   = "Meblock@2026";
 
 MeBlockMQTT* MeBlockMQTT::_self = nullptr;
 

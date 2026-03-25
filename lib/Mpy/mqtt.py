@@ -123,9 +123,9 @@ def read_action_value(channel, action, default=None):
 
 
 
-MEBLOCK_SERVER = "103.195.239.8"
+MEBLOCK_SERVER = "103.173.226.204"
 MEBLOCK_USER = "admin"
-MEBLOCK_PASS = "Leto@n1989"
+MEBLOCK_PASS = "Meblock@2026"
 
 # ---------- Helpers ----------
 def set_channel_prefix(prefix="M", map_legacy_v=True):
