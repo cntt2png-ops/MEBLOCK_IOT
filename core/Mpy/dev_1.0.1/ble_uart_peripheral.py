@@ -1,7 +1,13 @@
 # This example demonstrates a peripheral implementing the Nordic UART Service (NUS).
 
+# This example demonstrates the low-level bluetooth module. For most
+# applications, we recommend using the higher-level aioble library which takes
+# care of all IRQ handling and connection management. See
+# https://github.com/micropython/micropython-lib/tree/master/micropython/bluetooth/aioble
+
 import bluetooth
 from ble_advertising import advertising_payload
+
 from micropython import const
 
 _IRQ_CENTRAL_CONNECT = const(1)
@@ -39,50 +45,31 @@ class BLEUART:
         self._ble.gatts_set_buffer(self._rx_handle, rxbuf, True)
         self._connections = set()
         self._rx_buffer = bytearray()
-
-        # ===== changed: support multiple RX handlers =====
-        self._handlers = []
-
+        self._handler = None
         # Optionally add services=[_UART_UUID], but this is likely to make the payload too large.
         self._payload = advertising_payload(name=name, appearance=_ADV_APPEARANCE_GENERIC_COMPUTER)
         self._advertise()
 
-    def irq(self, handler, append=False):
-        """
-        - append=False (default): keep backward compatibility (single handler)
-        - append=True: add extra handler (do NOT remove existing one)
-        """
-        if handler is None:
-            self._handlers = []
-            return
-        if append:
-            self._handlers.append(handler)
-        else:
-            self._handlers = [handler]
+    def irq(self, handler):
+        self._handler = handler
 
     def _irq(self, event, data):
         # Track connections so we can send notifications.
         if event == _IRQ_CENTRAL_CONNECT:
             conn_handle, _, _ = data
             self._connections.add(conn_handle)
-
         elif event == _IRQ_CENTRAL_DISCONNECT:
             conn_handle, _, _ = data
             if conn_handle in self._connections:
                 self._connections.remove(conn_handle)
             # Start advertising again to allow a new connection.
             self._advertise()
-
         elif event == _IRQ_GATTS_WRITE:
             conn_handle, value_handle = data
             if conn_handle in self._connections and value_handle == self._rx_handle:
                 self._rx_buffer += self._ble.gatts_read(self._rx_handle)
-                if self._handlers:
-                    for h in self._handlers:
-                        try:
-                            h()
-                        except Exception:
-                            pass
+                if self._handler:
+                    self._handler()
 
     def any(self):
         return len(self._rx_buffer)
@@ -96,17 +83,11 @@ class BLEUART:
 
     def write(self, data):
         for conn_handle in self._connections:
-            try:
-                self._ble.gatts_notify(conn_handle, self._tx_handle, data)
-            except Exception:
-                pass
+            self._ble.gatts_notify(conn_handle, self._tx_handle, data)
 
     def close(self):
-        for conn_handle in list(self._connections):
-            try:
-                self._ble.gap_disconnect(conn_handle)
-            except Exception:
-                pass
+        for conn_handle in self._connections:
+            self._ble.gap_disconnect(conn_handle)
         self._connections.clear()
 
     def _advertise(self, interval_us=500000):
@@ -115,19 +96,20 @@ class BLEUART:
 
 def demo():
     import time
+
     ble = bluetooth.BLE()
     uart = BLEUART(ble)
 
     def on_rx():
         print("rx: ", uart.read().decode().strip())
 
-    uart.irq(on_rx)
+    uart.irq(handler=on_rx)
     nums = [4, 8, 15, 16, 23, 42]
     i = 0
 
     try:
         while True:
-            uart.write((str(nums[i]) + "\n").encode())
+            uart.write(str(nums[i]) + "\n")
             i = (i + 1) % len(nums)
             time.sleep_ms(1000)
     except KeyboardInterrupt:
