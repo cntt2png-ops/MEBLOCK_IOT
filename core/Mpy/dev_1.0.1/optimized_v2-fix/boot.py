@@ -1,5 +1,5 @@
 # boot.py - ESP32-S3 MicroPython boot script
-# Simple boot with BLE UART REPL
+# Boot log uses onboard.send_inf/send_war/send_err when available.
 
 import micropython
 import os
@@ -7,6 +7,28 @@ import time
 from machine import Pin
 
 micropython.alloc_emergency_exception_buf(128)
+
+# ===== Log helpers =====
+try:
+    from onboard import send_inf, send_war, send_err
+except Exception:
+    def _fallback_log(prefix, code_or_text, text=None):
+        try:
+            if text is None:
+                print("[%s] %s" % (prefix, code_or_text))
+            else:
+                print("[%s] %s: %s" % (prefix, code_or_text, text))
+        except Exception:
+            pass
+
+    def send_inf(code_or_text, text=None, out=None):
+        _fallback_log("INF", code_or_text, text)
+
+    def send_war(code_or_text, text=None, out=None):
+        _fallback_log("WAR", code_or_text, text)
+
+    def send_err(code_or_text, text=None, out=None):
+        _fallback_log("ERR", code_or_text, text)
 
 # ===== Device name helper =====
 try:
@@ -16,16 +38,16 @@ except ImportError:
         return "MEBLOCK-DEVICE"
 
 # ===== BLE UART REPL =====
-print("[BOOT] Starting BLE UART REPL...")
+send_inf("I_BOOT", "Starting BLE UART REPL")
 
 try:
     import ble_uart_repl
     device_name = load_device_name()
-    print("[BOOT] BLE name:", device_name)
+    send_inf("I_BLE_NAME", device_name)
     ble_uart_repl.start(name=device_name)
-    print("[BOOT] BLE UART REPL ready")
+    send_inf("I_BOOT", "BLE UART REPL ready")
 except Exception as e:
-    print("[BOOT] BLE REPL failed:", e)
+    send_err("E_BLE_REPL", str(e))
 
 # ===== Optional: Double-Press BOOT (IO0) Detection =====
 BOOT_PIN = 0
@@ -36,10 +58,10 @@ def check_double_boot():
     try:
         boot_btn = Pin(BOOT_PIN, Pin.IN, Pin.PULL_UP)
     except Exception as e:
-        print("[BOOTKEY] Cannot init BOOT pin:", e)
+        send_war("W_BOOTKEY", "Cannot init BOOT pin: %s" % e)
         return False
 
-    print("[BOOTKEY] Press BOOT (IO0) 2 times to enter recovery...")
+    send_inf("I_BOOTKEY", "Press BOOT IO0 2 times to enter recovery")
 
     press_count = 0
     start_ms = time.ticks_ms()
@@ -56,13 +78,13 @@ def check_double_boot():
 
             if state == 0:
                 press_count += 1
-                print("[BOOTKEY] Press", press_count)
+                send_inf("I_BOOTKEY", "Press %d" % press_count)
 
                 if press_count >= 2:
-                    print("[BOOTKEY] Double BOOT detected - entering recovery")
+                    send_war("W_RECOVERY", "Double BOOT detected - entering recovery")
                     try:
                         os.remove("main.py")
-                    except:
+                    except Exception:
                         pass
                     return True
 
@@ -71,8 +93,8 @@ def check_double_boot():
     return False
 
 if check_double_boot():
-    print("[BOOT] Recovery mode - REPL only")
+    send_war("W_BOOT", "Recovery mode - REPL only")
 else:
-    print("[BOOT] Normal boot")
+    send_inf("I_BOOT", "Normal boot")
 
-print("[BOOT] Complete")
+send_inf("I_BOOT", "Complete")

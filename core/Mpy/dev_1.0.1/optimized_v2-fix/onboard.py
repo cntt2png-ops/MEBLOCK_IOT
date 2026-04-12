@@ -126,8 +126,10 @@ def _clamp8(v):
         v = int(v)
     except Exception:
         v = 0
-    if v < 0: v = 0
-    if v > 255: v = 255
+    if v < 0:
+        v = 0
+    if v > 255:
+        v = 255
     return v
 
 def make_color(r, g, b):
@@ -135,7 +137,9 @@ def make_color(r, g, b):
     Tạo màu dạng chuỗi "#RRGGBB" (lowercase).
     Dùng để truyền vào show()/blink_color()/rgb.on().
     """
-    r = _clamp8(r); g = _clamp8(g); b = _clamp8(b)
+    r = _clamp8(r)
+    g = _clamp8(g)
+    b = _clamp8(b)
     return "#{:02x}{:02x}{:02x}".format(r, g, b)
 
 class OnboardRGB:
@@ -205,8 +209,10 @@ class OnboardRGB:
             v = float(value)
         except Exception:
             return self._brightness
-        if v < 0: v = 0.0
-        if v > 1: v = 1.0
+        if v < 0:
+            v = 0.0
+        if v > 1:
+            v = 1.0
         self._brightness = v
         return self._brightness
 
@@ -251,9 +257,6 @@ class OnboardRGB:
         self._write_all(rgb)
 
     def hex(self, hex_color):
-        """
-        Set theo màu "#RRGGBB" đã tạo từ make_color()
-        """
         self.on(hex_color)
 
     def color(self, name):
@@ -359,3 +362,102 @@ def blink(times=3, period_ms=250, color_name="WHITE", end_off=True):
 
 def info():
     return rgb.info()
+
+# ------------------------------------------------------------
+# Frame log helpers (UI protocol v2.0)
+# Format: \x06<type>/<code>/<text>/\x06
+# type: err | war | inf
+# code: E_* / W_* / I_* (or custom)
+# text: message payload (must not contain 0x06)
+# ------------------------------------------------------------
+
+_ACK = "\x06"
+
+def _sanitize_frame_token(s):
+    """Sanitize token/text to be safely embedded in frame."""
+    if s is None:
+        s = ""
+    s = str(s)
+    s = s.replace(_ACK, "")
+    s = s.replace("/", "_")
+    s = s.replace("\r", "\\r").replace("\n", "\\n")
+    return s
+
+def _build_frame_str(_type, code, text):
+    _type = _sanitize_frame_token(_type).lower()
+    code = _sanitize_frame_token(code)
+    text = _sanitize_frame_token(text)
+    return _ACK + _type + "/" + code + "/" + text + "/" + _ACK
+
+def _send_frame(_type, code, text, out=None):
+    """
+    Send a framed message. If out is None -> write to sys.stdout (Serial/REPL).
+    out can be:
+      - a callable: uart.write / socket.send / ble_notify wrapper...
+      - an object with .write(...) or .send(...)
+    Returns the bytes sent.
+    """
+    frame_str = _build_frame_str(_type, code, text)
+    frame_bytes = frame_str.encode("utf-8")
+
+    if out is None:
+        try:
+            sys.stdout.write(frame_str)
+            try:
+                sys.stdout.flush()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                print(frame_str, end="")
+            except Exception:
+                pass
+        return frame_bytes
+
+    if callable(out):
+        try:
+            out(frame_bytes)
+            return frame_bytes
+        except TypeError:
+            out(frame_str)
+            return frame_bytes
+        except Exception:
+            return frame_bytes
+
+    for m in ("write", "send"):
+        fn = getattr(out, m, None)
+        if fn:
+            try:
+                fn(frame_bytes)
+                return frame_bytes
+            except TypeError:
+                fn(frame_str)
+                return frame_bytes
+            except Exception:
+                return frame_bytes
+
+    return frame_bytes
+
+def send_inf(code_or_text, text=None, out=None):
+    if text is None:
+        code = "I_TEXT"
+        text = code_or_text
+    else:
+        code = code_or_text
+    return _send_frame("inf", code, text, out=out)
+
+def send_war(code_or_text, text=None, out=None):
+    if text is None:
+        code = "W_LOW_BAT"
+        text = code_or_text
+    else:
+        code = code_or_text
+    return _send_frame("war", code, text, out=out)
+
+def send_err(code_or_text, text=None, out=None):
+    if text is None:
+        code = "E_DEV"
+        text = code_or_text
+    else:
+        code = code_or_text
+    return _send_frame("err", code, text, out=out)
