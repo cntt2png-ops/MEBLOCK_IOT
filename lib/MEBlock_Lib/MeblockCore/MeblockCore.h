@@ -1,7 +1,7 @@
 #pragma once
 /*
   MeblockCore - standalone core-only library (Arduino C++)
-  --------------------------------------------------------
+  --------------------------------------------------------.
   Chỉ cần 2 file MeblockCore.h/.cpp là có sẵn:
   - Core boot/UART command handlers
   - Onboard RGB LED helper

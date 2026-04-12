@@ -7,7 +7,7 @@ extern "C" {
   #include "esp_err.h"
 }
 
-// ===== BOOT button detector =====
+// ===== BOOT button detector =====.
 static const int BOOT_BUTTON_PIN = 0;
 static const uint32_t DOUBLE_BOOT_WINDOW_MS = 3000;
 static const uint32_t DEBOUNCE_MS = 60;

@@ -12,7 +12,7 @@ public:
                                const String& channel,
                                const String& username);
 
-  // ===== Blocks API =====
+  // ===== Blocks API =====.
   bool connect_wifi(const char* ssid, const char* password, uint32_t timeout_ms = 20000);
 
   bool connect_broker(const char* server, uint16_t port,
